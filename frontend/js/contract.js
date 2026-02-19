@@ -121,8 +121,8 @@ class TipJarContract {
       const method = this._abiContract.getMethodByName(methodName);
       const suggestedParams = await this.algodClient.getTransactionParams().do();
 
-      // Use a dummy sender for read-only calls (simulate)
-      const dummySender = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+      // Use a dummy sender for read-only calls (simulate) — valid 58-char zero address
+      const dummySender = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ';
       const atc = new algosdk.AtomicTransactionComposer();
       atc.addMethodCall({
         appID: this.appId,
