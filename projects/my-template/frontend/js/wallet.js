@@ -759,10 +759,13 @@ class WalletManager {
     let txId = null;
     this._setLoading(true);
 
+    // Detect demo creator addresses (not valid on-chain)
+    const isDemoCreator = creatorAddress.startsWith('DEMO');
+
     // ── Real Transaction (Pera / Defly) ──
     // Sends payment directly to creator with structured note.
     // Production upgrade: create atomic group (payment + app call to sendTip ABI method)
-    if (this.mode !== 'demo' && this.algodClient) {
+    if (this.mode !== 'demo' && this.algodClient && !isDemoCreator) {
       try {
         // Validate network before transacting
         const networkCheck = await this.validateNetwork();
