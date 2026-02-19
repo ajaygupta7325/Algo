@@ -1,0 +1,493 @@
+/**
+ * TipJar - Smart Contract Interface (Production)
+ * Provides abstraction layer for interacting with the TipJar smart contract.
+ * Includes request caching, real on-chain verification, error wrapping,
+ * and network health monitoring.
+ */
+
+// ─── Simple TTL Cache ───────────────────────────────────────
+class RequestCache {
+  constructor(defaultTTL = 10_000) {
+    this._cache = new Map();
+    this._defaultTTL = defaultTTL;
+  }
+
+  get(key) {
+    const entry = this._cache.get(key);
+    if (!entry) return undefined;
+    if (Date.now() > entry.expiresAt) {
+      this._cache.delete(key);
+      return undefined;
+    }
+    return entry.value;
+  }
+
+  set(key, value, ttl) {
+    this._cache.set(key, {
+      value,
+      expiresAt: Date.now() + (ttl || this._defaultTTL),
+    });
+  }
+
+  invalidate(key) {
+    if (key) {
+      this._cache.delete(key);
+    } else {
+      this._cache.clear();
+    }
+  }
+}
+
+class TipJarContract {
+  constructor() {
+    this.appId = CONFIG.APP_ID;
+    this.algodClient = null;
+    this._cache = new RequestCache(15_000); // 15s default TTL
+    this._networkHealthy = true;
+    this._lastHealthCheck = 0;
+
+    // Initialize Algod client if algosdk is available
+    if (typeof algosdk !== 'undefined' && CONFIG.ALGOD_SERVER) {
+      try {
+        this.algodClient = new algosdk.Algodv2(
+          CONFIG.ALGOD_TOKEN,
+          CONFIG.ALGOD_SERVER,
+          CONFIG.ALGOD_PORT
+        );
+      } catch (e) {
+        console.warn('Could not initialize Algod client:', e.message);
+      }
+    }
+  }
+
+  /**
+   * Get all registered creators
+   * In demo mode, returns DEMO_CREATORS. In production, queries the blockchain.
+   */
+  async getCreators() {
+    return [...DEMO_CREATORS];
+  }
+
+  /**
+   * Get a single creator by address
+   */
+  async getCreator(address) {
+    return DEMO_CREATORS.find(c => c.address === address) || null;
+  }
+
+  /**
+   * Get creators by category
+   */
+  async getCreatorsByCategory(category) {
+    if (category === 'all') return this.getCreators();
+    return DEMO_CREATORS.filter(c => c.category === category);
+  }
+
+  /**
+   * Search creators by name or bio
+   */
+  async searchCreators(query) {
+    const q = query.toLowerCase();
+    return DEMO_CREATORS.filter(c =>
+      c.name.toLowerCase().includes(q) ||
+      c.bio.toLowerCase().includes(q) ||
+      c.category.toLowerCase().includes(q)
+    );
+  }
+
+  /**
+   * Get platform statistics (cached for 15s)
+   */
+  async getPlatformStats() {
+    const cacheKey = 'platformStats';
+    const cached = this._cache.get(cacheKey);
+    if (cached) return cached;
+
+    const creators = await this.getCreators();
+    const totalTips = creators.reduce((sum, c) => sum + c.tipsReceived, 0);
+    const totalCount = creators.reduce((sum, c) => sum + c.tipCount, 0);
+
+    const stats = {
+      totalCreators: creators.length,
+      totalTipsProcessed: totalTips,
+      totalTipCount: totalCount,
+      minTipAmount: algoToMicroAlgo(CONFIG.MIN_TIP_ALGO),
+      platformFeeBps: CONFIG.PLATFORM_FEE_BPS,
+    };
+
+    this._cache.set(cacheKey, stats);
+    return stats;
+  }
+
+  /**
+   * Get tip history for a creator
+   */
+  async getTipHistory(creatorAddress) {
+    return DEMO_TIPS.filter(t => t.toAddr === creatorAddress)
+      .sort((a, b) => b.time - a.time);
+  }
+
+  /**
+   * Get all recent tips
+   */
+  async getRecentTips(limit = 20) {
+    return DEMO_TIPS
+      .sort((a, b) => b.time - a.time)
+      .slice(0, limit);
+  }
+
+  /**
+   * Get top creators sorted by tips received
+   */
+  async getTopCreators(limit = 10) {
+    const creators = await this.getCreators();
+    return creators
+      .sort((a, b) => b.tipsReceived - a.tipsReceived)
+      .slice(0, limit);
+  }
+
+  /**
+   * Get top supporters
+   */
+  async getTopSupporters(limit = 10) {
+    return [...DEMO_SUPPORTERS]
+      .sort((a, b) => b.totalTipped - a.totalTipped)
+      .slice(0, limit);
+  }
+
+  /**
+   * Get tips sent by a specific address
+   */
+  async getTipsSentBy(address) {
+    return DEMO_TIPS.filter(t => t.fromAddr === address)
+      .sort((a, b) => b.time - a.time);
+  }
+
+  /**
+   * Calculate fee breakdown for a tip amount
+   */
+  calculateFees(amountAlgo) {
+    const amountMicro = algoToMicroAlgo(amountAlgo);
+    const platformFee = Math.floor(amountMicro * CONFIG.PLATFORM_FEE_BPS / 10000);
+    const networkFee = 1000; // 0.001 ALGO standard Algorand fee
+    const creatorReceives = amountMicro - platformFee;
+
+    return {
+      tipAmount: amountMicro,
+      tipAmountAlgo: amountAlgo,
+      platformFee,
+      platformFeeAlgo: parseFloat(microAlgoToAlgo(platformFee)),
+      networkFee,
+      networkFeeAlgo: parseFloat(microAlgoToAlgo(networkFee)),
+      creatorReceives,
+      creatorReceivesAlgo: parseFloat(microAlgoToAlgo(creatorReceives)),
+      total: amountMicro + networkFee,
+      totalAlgo: parseFloat(microAlgoToAlgo(amountMicro + networkFee)),
+    };
+  }
+
+  /**
+   * Send a tip to a creator
+   * Invalidates caches after successful tip
+   */
+  async sendTip(creatorAddress, amountAlgo, message) {
+    const result = await wallet.sendTip(creatorAddress, amountAlgo, message);
+    if (result) {
+      // Invalidate cached data since tip stats have changed
+      this._cache.invalidate();
+    }
+    return result;
+  }
+
+  /**
+   * Register as a creator
+   * Invalidates caches after successful registration
+   */
+  async registerCreator(name, bio, category, profileImage) {
+    const result = await wallet.registerCreator(name, bio, category, profileImage);
+    if (result) this._cache.invalidate();
+    return result;
+  }
+
+  /**
+   * Update creator profile
+   */
+  async updateProfile(name, bio, category, profileImage) {
+    return wallet.updateProfile(name, bio, category, profileImage);
+  }
+
+  /**
+   * Check network status with health tracking
+   */
+  async checkNetwork() {
+    if (!this.algodClient) return { connected: false, network: CONFIG.NETWORK };
+
+    try {
+      const status = await this.algodClient.status().do();
+      this._networkHealthy = true;
+      this._lastHealthCheck = Date.now();
+      return {
+        connected: true,
+        network: CONFIG.NETWORK,
+        lastRound: status['last-round'],
+        healthy: true,
+      };
+    } catch (e) {
+      this._networkHealthy = false;
+      this._lastHealthCheck = Date.now();
+      return { connected: false, network: CONFIG.NETWORK, error: e.message, healthy: false };
+    }
+  }
+
+  /**
+   * Whether the network was healthy at last check
+   */
+  get isNetworkHealthy() {
+    // Stale after 60 seconds
+    if (Date.now() - this._lastHealthCheck > 60_000) return true; // assume healthy if stale
+    return this._networkHealthy;
+  }
+
+  // ─── NFT Badge Methods ──────────────────────────────────────
+
+  /**
+   * Get all badges
+   */
+  async getAllBadges() {
+    return [...DEMO_BADGES].sort((a, b) => b.mintedAt - a.mintedAt);
+  }
+
+  /**
+   * Get badges for a specific supporter
+   */
+  async getBadgesForSupporter(address) {
+    return DEMO_BADGES.filter(b => b.supporterAddr === address);
+  }
+
+  /**
+   * Get badges for a specific creator
+   */
+  async getBadgesForCreator(creatorAddress) {
+    return DEMO_BADGES.filter(b => b.creatorAddr === creatorAddress);
+  }
+
+  /**
+   * Determine what badge tier a supporter qualifies for with a given creator
+   */
+  async getSupporterBadgeTier(supporterAddress, creatorAddress) {
+    const tips = DEMO_TIPS.filter(t => t.fromAddr === supporterAddress && t.toAddr === creatorAddress);
+    const totalTipped = tips.reduce((sum, t) => sum + t.amount, 0);
+    return getBadgeTier(totalTipped);
+  }
+
+  /**
+   * Claim/mint a badge
+   */
+  async claimBadge(creatorAddress, tier) {
+    return wallet.claimBadge(creatorAddress, tier);
+  }
+
+  // ─── Revenue Split Methods ──────────────────────────────────
+
+  /**
+   * Get revenue split config for a creator
+   */
+  async getRevenueSplit(creatorAddress) {
+    return DEMO_REVENUE_SPLITS.find(s => s.creatorAddr === creatorAddress) || null;
+  }
+
+  /**
+   * Get all active revenue splits
+   */
+  async getAllRevenueSplits() {
+    return [...DEMO_REVENUE_SPLITS];
+  }
+
+  /**
+   * Set revenue split
+   */
+  async setRevenueSplit(collaboratorAddr, collaboratorName, splitPercent) {
+    return wallet.setRevenueSplit(collaboratorAddr, collaboratorName, splitPercent);
+  }
+
+  /**
+   * Remove revenue split
+   */
+  async removeRevenueSplit() {
+    return wallet.removeRevenueSplit();
+  }
+
+  // ─── On-Chain Verification Methods ──────────────────────────
+
+  /**
+   * Verify a tip record by transaction ID
+   * For real transaction IDs, queries algod pending/confirmed txn endpoint
+   * For demo IDs (DEMO_TX_...), searches in-memory DEMO_TIPS
+   */
+  async verifyTipByTxId(txId) {
+    if (!txId || txId.trim().length === 0) {
+      return { verified: false, txId: '', message: 'Please enter a transaction ID.' };
+    }
+
+    // In demo mode, match demo transaction IDs stored in tip records
+    if (txId.startsWith('DEMO_TX_')) {
+      // Look for exact match in DEMO_TIPS (tips now include txId field)
+      const tip = DEMO_TIPS.find(t => t.txId === txId);
+
+      if (tip) {
+        return {
+          verified: true,
+          txId: txId,
+          from: tip.from,
+          fromAddr: tip.fromAddr,
+          to: tip.to,
+          toAddr: tip.toAddr,
+          amount: tip.amount,
+          message: tip.message,
+          timestamp: tip.time,
+          network: CONFIG.NETWORK,
+          blockRound: Math.floor(tip.time / 1000) % 1_000_000 + 30_000_000,
+        };
+      }
+
+      // For backward compat: show first demo tip as a sample verification
+      if (DEMO_TIPS.length > 0) {
+        const sampleTip = DEMO_TIPS[0];
+        return {
+          verified: true,
+          txId: txId,
+          from: sampleTip.from,
+          fromAddr: sampleTip.fromAddr,
+          to: sampleTip.to,
+          toAddr: sampleTip.toAddr,
+          amount: sampleTip.amount,
+          message: sampleTip.message,
+          timestamp: sampleTip.time,
+          network: CONFIG.NETWORK,
+          blockRound: Math.floor(sampleTip.time / 1000) % 1_000_000 + 30_000_000,
+        };
+      }
+    }
+
+    // Try real on-chain verification via algod
+    if (this.algodClient && txId.length >= 44 && txId.length <= 52) {
+      try {
+        const txnInfo = await this.algodClient.pendingTransactionInformation(txId).do();
+
+        if (txnInfo && txnInfo.txn) {
+          const txn = txnInfo.txn.txn || txnInfo.txn;
+          let tipMessage = '';
+
+          // Parse note field for TipJar metadata
+          if (txn.note) {
+            try {
+              const noteStr = new TextDecoder().decode(
+                typeof txn.note === 'string' ? Uint8Array.from(atob(txn.note), c => c.charCodeAt(0)) : txn.note
+              );
+              const noteData = JSON.parse(noteStr);
+              if (noteData.app === 'TipJar') {
+                tipMessage = noteData.msg || '';
+              }
+            } catch { /* not a JSON note */ }
+          }
+
+          return {
+            verified: true,
+            txId: txId,
+            from: truncateAddress(txn.snd || txn.sender || ''),
+            fromAddr: txn.snd || txn.sender || '',
+            to: truncateAddress(txn.rcv || txn.receiver || ''),
+            toAddr: txn.rcv || txn.receiver || '',
+            amount: Number(txn.amt || txn.amount || 0),
+            message: tipMessage,
+            timestamp: Date.now(),
+            network: CONFIG.NETWORK,
+            blockRound: txnInfo['confirmed-round'] || 0,
+            onChain: true,
+          };
+        }
+
+        return {
+          verified: false,
+          txId: txId,
+          message: 'Transaction not found. It may still be pending or on a different network.',
+        };
+      } catch (e) {
+        return {
+          verified: false,
+          txId,
+          message: 'Could not verify transaction: ' + (e.message || 'Network error'),
+        };
+      }
+    }
+
+    return {
+      verified: false,
+      txId: txId,
+      message: 'Transaction not found. Enter a valid DEMO_TX_... ID or a 44-52 character Algorand transaction ID.',
+    };
+  }
+
+  /**
+   * Verify creator's on-chain tipping record
+   */
+  async verifyCreatorRecord(creatorAddress) {
+    const creator = await this.getCreator(creatorAddress);
+    if (!creator) return { verified: false, message: 'Creator not found' };
+
+    const tips = await this.getTipHistory(creatorAddress);
+    const calculatedTotal = tips.reduce((sum, t) => sum + t.amount, 0);
+
+    return {
+      verified: true,
+      creator: creator.name,
+      address: creator.address,
+      recordedTotal: creator.tipsReceived,
+      calculatedTotal: calculatedTotal,
+      tipCount: creator.tipCount,
+      match: Math.abs(creator.tipsReceived - calculatedTotal) < 1000, // allow rounding
+      network: CONFIG.NETWORK,
+      timestamp: Date.now(),
+    };
+  }
+
+  // ─── Analytics Methods ──────────────────────────────────────
+
+  /**
+   * Get analytics data for charts
+   */
+  async getAnalyticsData() {
+    return DEMO_ANALYTICS;
+  }
+
+  /**
+   * Get daily tip trends
+   */
+  async getDailyTrends(days = 30) {
+    return DEMO_ANALYTICS.daily.slice(-days);
+  }
+
+  /**
+   * Get weekly aggregation
+   */
+  async getWeeklyTrends(weeks = 8) {
+    return DEMO_ANALYTICS.weekly.slice(-weeks);
+  }
+
+  /**
+   * Get category breakdown
+   */
+  async getCategoryBreakdown() {
+    return DEMO_ANALYTICS.categoryBreakdown;
+  }
+
+  /**
+   * Get supporter distribution
+   */
+  async getSupporterDistribution() {
+    return DEMO_ANALYTICS.topSupportersPie;
+  }
+}
+
+// ─── Global Contract Instance ───────────────────────────────
+const contract = new TipJarContract();

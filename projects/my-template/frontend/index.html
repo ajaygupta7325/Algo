@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Security Headers -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://esm.sh; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://testnet-api.algonode.cloud https://testnet-idx.algonode.cloud https://mainnet-api.algonode.cloud https://mainnet-idx.algonode.cloud wss://*.walletconnect.com https://*.walletconnect.com; img-src 'self' https: data:; frame-ancestors 'none';">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()">
+  <title>TipJar - Content Creator Tip Platform</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/responsive.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <!-- AlgoSDK from CDN (UMD browser build) -->
+  <script src="https://unpkg.com/algosdk@3.5.2/dist/browser/algosdk.min.js"></script>
+  <!-- Pera & Defly Wallet SDKs loaded dynamically via esm.sh in wallet.js (no UMD builds available) -->
+</head>
+<body>
+  <!-- ─── Navigation ──────────────────────────────────────── -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="#" class="nav-logo" data-page="home">
+        <span class="logo-icon">💎</span>
+        <span class="logo-text">TipJar</span>
+      </a>
+      <div class="nav-links" id="navLinks">
+        <a href="#" class="nav-link active" data-page="home">Home</a>
+        <a href="#" class="nav-link" data-page="explore">Explore Creators</a>
+        <a href="#" class="nav-link" data-page="leaderboard">Leaderboard</a>
+        <a href="#" class="nav-link" data-page="dashboard">Dashboard</a>
+        <a href="#" class="nav-link" data-page="analytics">Analytics</a>
+        <a href="#" class="nav-link" data-page="verify">Verify</a>
+        <a href="#" class="nav-link" data-page="widget-demo">Widget</a>
+      </div>
+      <div class="nav-actions">
+        <button class="btn btn-outline" id="connectWalletBtn">
+          <span class="wallet-icon">🔗</span>
+          <span id="walletBtnText">Connect Wallet</span>
+        </button>
+        <button class="hamburger" id="hamburger">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ─── Main Content ────────────────────────────────────── -->
+  <main class="main-content">
+
+    <!-- ════ HOME PAGE ════════════════════════════════════ -->
+    <section class="page active" id="page-home">
+      <!-- Hero Section -->
+      <div class="hero">
+        <div class="hero-particles" id="heroParticles"></div>
+        <div class="hero-content">
+          <div class="hero-badge">⚡ Powered by Algorand Blockchain</div>
+          <h1 class="hero-title">
+            Support Your Favorite
+            <span class="gradient-text">Content Creators</span>
+          </h1>
+          <p class="hero-subtitle">
+            Send instant, low-fee tips directly to creators you love. No intermediaries, 
+            no hidden fees — just pure appreciation on the blockchain.
+          </p>
+          <div class="hero-actions">
+            <button class="btn btn-primary btn-lg" data-navigate="explore">
+              🎨 Explore Creators
+            </button>
+            <button class="btn btn-secondary btn-lg" id="heroRegisterBtn">
+              ✨ Become a Creator
+            </button>
+          </div>
+          <div class="hero-stats">
+            <div class="hero-stat">
+              <span class="hero-stat-value" id="heroTotalCreators">0</span>
+              <span class="hero-stat-label">Creators</span>
+            </div>
+            <div class="hero-stat">
+              <span class="hero-stat-value" id="heroTotalTips">0</span>
+              <span class="hero-stat-label">Tips Sent</span>
+            </div>
+            <div class="hero-stat">
+              <span class="hero-stat-value" id="heroTotalVolume">0 ALGO</span>
+              <span class="hero-stat-label">Volume</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- How It Works -->
+      <div class="section">
+        <div class="container">
+          <h2 class="section-title">How It Works</h2>
+          <p class="section-subtitle">Three simple steps to start supporting creators</p>
+          <div class="steps-grid">
+            <div class="step-card">
+              <div class="step-number">1</div>
+              <div class="step-icon">🔗</div>
+              <h3>Connect Wallet</h3>
+              <p>Connect your Algorand wallet (Pera, Defly, or demo mode) to get started.</p>
+            </div>
+            <div class="step-card">
+              <div class="step-number">2</div>
+              <div class="step-icon">🔍</div>
+              <h3>Find Creators</h3>
+              <p>Browse creators by category — bloggers, artists, musicians, photographers.</p>
+            </div>
+            <div class="step-card">
+              <div class="step-number">3</div>
+              <div class="step-icon">💰</div>
+              <h3>Send a Tip</h3>
+              <p>Choose a preset amount or enter custom — tips arrive instantly with minimal fees!</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Features -->
+      <div class="section section-alt">
+        <div class="container">
+          <h2 class="section-title">Why TipJar?</h2>
+          <div class="features-grid">
+            <div class="feature-card">
+              <div class="feature-icon">⚡</div>
+              <h3>Instant Payments</h3>
+              <p>Tips settle in ~3.3 seconds on Algorand. No waiting days for bank transfers.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">💸</div>
+              <h3>Ultra-Low Fees</h3>
+              <p>Transaction fees as low as 0.001 ALGO (~$0.0001). Only 1% platform fee.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">🔒</div>
+              <h3>Secure & Transparent</h3>
+              <p>Every tip recorded on the blockchain. No chargebacks, no disputes.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">🌍</div>
+              <h3>Global Access</h3>
+              <p>Anyone worldwide can tip or receive tips. No banking restrictions.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">📊</div>
+              <h3>Graph Analytics</h3>
+              <p>Interactive charts showing tip trends, category breakdowns, and insights.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">🧩</div>
+              <h3>Embeddable Widget</h3>
+              <p>Add a tip button to any website with a simple embed code.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">🏅</div>
+              <h3>NFT Badges</h3>
+              <p>Top supporters earn NFT appreciation badges — Bronze, Silver, Gold & Diamond tiers.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">💰</div>
+              <h3>Revenue Splits</h3>
+              <p>Smart contract-based automatic revenue sharing with collaborators.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">🔍</div>
+              <h3>On-Chain Verification</h3>
+              <p>Verify any tip on the blockchain. Fully transparent, tamper-proof records.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Featured Creators -->
+      <div class="section">
+        <div class="container">
+          <h2 class="section-title">Featured Creators</h2>
+          <p class="section-subtitle">Discover talented creators to support</p>
+          <div class="creators-grid" id="featuredCreators">
+            <!-- Dynamically populated -->
+          </div>
+          <div class="section-cta">
+            <button class="btn btn-primary" data-navigate="explore">View All Creators →</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════ EXPLORE CREATORS PAGE ════════════════════════ -->
+    <section class="page" id="page-explore">
+      <div class="page-header">
+        <div class="container">
+          <h1 class="page-title">Explore Creators</h1>
+          <p class="page-subtitle">Find and support amazing content creators</p>
+        </div>
+      </div>
+      <div class="container">
+        <!-- Filters -->
+        <div class="filter-bar">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="creatorSearch" placeholder="Search creators..." class="search-input">
+          </div>
+          <div class="filter-tabs">
+            <button class="filter-tab active" data-category="all">All</button>
+            <button class="filter-tab" data-category="blogger">📝 Bloggers</button>
+            <button class="filter-tab" data-category="artist">🎨 Artists</button>
+            <button class="filter-tab" data-category="musician">🎵 Musicians</button>
+            <button class="filter-tab" data-category="photographer">📸 Photographers</button>
+          </div>
+        </div>
+        <!-- Creator Cards Grid -->
+        <div class="creators-grid" id="exploreCreators">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ════ CREATOR PROFILE PAGE ═════════════════════════ -->
+    <section class="page" id="page-profile">
+      <div class="container">
+        <div class="profile-layout">
+          <!-- Profile Left: Info -->
+          <div class="profile-info">
+            <div class="profile-header-card">
+              <div class="profile-avatar" id="profileAvatar">🎨</div>
+              <h1 class="profile-name" id="profileName">Creator Name</h1>
+              <span class="profile-category-badge" id="profileCategory">Artist</span>
+              <p class="profile-bio" id="profileBio">Creator bio goes here...</p>
+              <div class="profile-address">
+                <span class="address-label">Algorand Address:</span>
+                <code class="address-code" id="profileAddress">XXXX...XXXX</code>
+                <button class="btn btn-icon" id="copyAddressBtn" title="Copy address">📋</button>
+              </div>
+              <div class="profile-stats-row">
+                <div class="profile-stat">
+                  <span class="profile-stat-value" id="profileTotalTips">0 ALGO</span>
+                  <span class="profile-stat-label">Total Received</span>
+                </div>
+                <div class="profile-stat">
+                  <span class="profile-stat-value" id="profileTipCount">0</span>
+                  <span class="profile-stat-label">Tips</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Recent Tips -->
+            <div class="card">
+              <h3 class="card-title">Recent Tips</h3>
+              <div class="tip-history" id="profileTipHistory">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+
+            <!-- Embed Code -->
+            <div class="card">
+              <h3 class="card-title">Embed Tip Button</h3>
+              <p class="card-desc">Add this code to any website to show a tip button for this creator.</p>
+              <div class="embed-code-box">
+                <code id="embedCodeSnippet">&lt;!-- TipJar Widget --&gt;</code>
+                <button class="btn btn-sm btn-outline" id="copyEmbedBtn">Copy</button>
+              </div>
+            </div>
+
+            <!-- NFT Badges Section -->
+            <div class="card">
+              <h3 class="card-title">🏅 NFT Supporter Badges</h3>
+              <p class="card-desc">Top supporters earn NFT appreciation badges</p>
+              <div class="badge-grid" id="profileBadges">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Profile Right: Tip Interface -->
+          <div class="profile-tip-section">
+            <div class="tip-card">
+              <h2 class="tip-card-title">💎 Send a Tip</h2>
+              <p class="tip-card-desc">Show your appreciation with ALGO</p>
+
+              <!-- Preset Amounts -->
+              <div class="tip-presets">
+                <button class="tip-preset" data-amount="0.5">
+                  <span class="preset-amount">0.5</span>
+                  <span class="preset-label">ALGO</span>
+                </button>
+                <button class="tip-preset" data-amount="1">
+                  <span class="preset-amount">1</span>
+                  <span class="preset-label">ALGO</span>
+                </button>
+                <button class="tip-preset selected" data-amount="2">
+                  <span class="preset-amount">2</span>
+                  <span class="preset-label">ALGO</span>
+                </button>
+                <button class="tip-preset" data-amount="5">
+                  <span class="preset-amount">5</span>
+                  <span class="preset-label">ALGO</span>
+                </button>
+                <button class="tip-preset" data-amount="10">
+                  <span class="preset-amount">10</span>
+                  <span class="preset-label">ALGO</span>
+                </button>
+                <button class="tip-preset" data-amount="25">
+                  <span class="preset-amount">25</span>
+                  <span class="preset-label">ALGO</span>
+                </button>
+              </div>
+
+              <!-- Custom Amount -->
+              <div class="custom-amount-group">
+                <label class="input-label">Or enter custom amount</label>
+                <div class="input-with-suffix">
+                  <input type="number" id="customTipAmount" class="input" placeholder="0.00" min="0.1" step="0.1">
+                  <span class="input-suffix">ALGO</span>
+                </div>
+              </div>
+
+              <!-- Message -->
+              <div class="form-group">
+                <label class="input-label">Message (optional)</label>
+                <textarea id="tipMessage" class="input textarea" placeholder="Great work! Keep it up! 🎉" maxlength="200"></textarea>
+                <span class="char-count"><span id="tipMsgCount">0</span>/200</span>
+              </div>
+
+              <!-- Fee Breakdown -->
+              <div class="fee-breakdown">
+                <div class="fee-row">
+                  <span>Tip Amount</span>
+                  <span id="tipAmountDisplay">2 ALGO</span>
+                </div>
+                <div class="fee-row">
+                  <span>Platform Fee (1%)</span>
+                  <span id="platformFeeDisplay">0.02 ALGO</span>
+                </div>
+                <div class="fee-row">
+                  <span>Network Fee</span>
+                  <span>~0.001 ALGO</span>
+                </div>
+                <div class="fee-row fee-total">
+                  <span>Creator Receives</span>
+                  <span id="creatorReceivesDisplay">1.98 ALGO</span>
+                </div>
+              </div>
+
+              <!-- Send Button -->
+              <button class="btn btn-primary btn-lg btn-full" id="sendTipBtn">
+                💎 Send Tip
+              </button>
+              <p class="tip-disclaimer">Tips are non-refundable. Processed on Algorand blockchain.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════ LEADERBOARD PAGE ═════════════════════════════ -->
+    <section class="page" id="page-leaderboard">
+      <div class="page-header">
+        <div class="container">
+          <h1 class="page-title">🏆 Leaderboard</h1>
+          <p class="page-subtitle">Top supporters and most-tipped creators</p>
+        </div>
+      </div>
+      <div class="container">
+        <div class="leaderboard-layout">
+          <!-- Top Creators -->
+          <div class="leaderboard-section">
+            <h2 class="leaderboard-title">🌟 Top Creators</h2>
+            <p class="leaderboard-desc">Creators who received the most tips</p>
+            <div class="leaderboard-list" id="topCreatorsList">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Top Supporters -->
+          <div class="leaderboard-section">
+            <h2 class="leaderboard-title">💖 Top Supporters</h2>
+            <p class="leaderboard-desc">The most generous tippers in the community</p>
+            <div class="leaderboard-list" id="topSupportersList">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Tips Feed -->
+        <div class="card" style="margin-top: 2rem;">
+          <h2 class="card-title">📡 Live Tip Feed</h2>
+          <div class="tip-feed" id="liveTipFeed">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- NFT Badge Hall of Fame -->
+        <div class="card" style="margin-top: 2rem;">
+          <h2 class="card-title">🏅 NFT Badge Hall of Fame</h2>
+          <p class="card-desc">Supporters who earned appreciation badges through generous tipping</p>
+          <div class="badge-hall-grid" id="badgeHallOfFame">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════ DASHBOARD PAGE ═══════════════════════════════ -->
+    <section class="page" id="page-dashboard">
+      <div class="page-header">
+        <div class="container">
+          <h1 class="page-title">Creator Dashboard</h1>
+          <p class="page-subtitle">Manage your creator profile and track your tips</p>
+        </div>
+      </div>
+      <div class="container">
+        <!-- Not Connected State -->
+        <div class="dashboard-connect" id="dashboardConnect">
+          <div class="empty-state">
+            <div class="empty-icon">🔗</div>
+            <h3>Connect Your Wallet</h3>
+            <p>Connect your Algorand wallet to access your creator dashboard.</p>
+            <button class="btn btn-primary" id="dashConnectBtn">Connect Wallet</button>
+          </div>
+        </div>
+
+        <!-- Not Registered State -->
+        <div class="dashboard-register" id="dashboardRegister" style="display:none;">
+          <div class="register-card">
+            <h2>🎨 Become a Creator</h2>
+            <p>Register your profile to start receiving tips from supporters.</p>
+            <form id="registerForm" class="form">
+              <div class="form-group">
+                <label class="input-label">Display Name *</label>
+                <input type="text" id="regName" class="input" placeholder="Your creator name" maxlength="50" required>
+              </div>
+              <div class="form-group">
+                <label class="input-label">Bio *</label>
+                <textarea id="regBio" class="input textarea" placeholder="Tell supporters about yourself and your work..." maxlength="200" required></textarea>
+              </div>
+              <div class="form-group">
+                <label class="input-label">Category *</label>
+                <select id="regCategory" class="input select" required>
+                  <option value="">Select your category</option>
+                  <option value="blogger">📝 Blogger</option>
+                  <option value="artist">🎨 Artist</option>
+                  <option value="musician">🎵 Musician</option>
+                  <option value="photographer">📸 Photographer</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="input-label">Profile Image URL</label>
+                <input type="url" id="regImage" class="input" placeholder="https://example.com/avatar.jpg">
+              </div>
+              <button type="submit" class="btn btn-primary btn-lg btn-full">✨ Register as Creator</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Registered Dashboard -->
+        <div class="dashboard-main" id="dashboardMain" style="display:none;">
+          <!-- Stats Cards -->
+          <div class="stats-grid">
+            <div class="stat-card stat-primary">
+              <div class="stat-icon">💰</div>
+              <div class="stat-info">
+                <span class="stat-value" id="dashTotalReceived">0</span>
+                <span class="stat-label">ALGO Received</span>
+              </div>
+            </div>
+            <div class="stat-card stat-success">
+              <div class="stat-icon">📊</div>
+              <div class="stat-info">
+                <span class="stat-value" id="dashTipCount">0</span>
+                <span class="stat-label">Total Tips</span>
+              </div>
+            </div>
+            <div class="stat-card stat-info">
+              <div class="stat-icon">👥</div>
+              <div class="stat-info">
+                <span class="stat-value" id="dashSupporters">0</span>
+                <span class="stat-label">Supporters</span>
+              </div>
+            </div>
+            <div class="stat-card stat-warning">
+              <div class="stat-icon">📈</div>
+              <div class="stat-info">
+                <span class="stat-value" id="dashAvgTip">0</span>
+                <span class="stat-label">Avg Tip (ALGO)</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="dashboard-grid">
+            <!-- Profile Management -->
+            <div class="card">
+              <h3 class="card-title">👤 Your Profile</h3>
+              <form id="updateProfileForm" class="form">
+                <div class="form-group">
+                  <label class="input-label">Display Name</label>
+                  <input type="text" id="editName" class="input" maxlength="50">
+                </div>
+                <div class="form-group">
+                  <label class="input-label">Bio</label>
+                  <textarea id="editBio" class="input textarea" maxlength="200"></textarea>
+                </div>
+                <div class="form-group">
+                  <label class="input-label">Category</label>
+                  <select id="editCategory" class="input select">
+                    <option value="blogger">📝 Blogger</option>
+                    <option value="artist">🎨 Artist</option>
+                    <option value="musician">🎵 Musician</option>
+                    <option value="photographer">📸 Photographer</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="input-label">Profile Image URL</label>
+                  <input type="url" id="editImage" class="input">
+                </div>
+                <button type="submit" class="btn btn-primary btn-full">Update Profile</button>
+              </form>
+            </div>
+
+            <!-- Tip History -->
+            <div class="card">
+              <h3 class="card-title">📜 Tip History</h3>
+              <div class="tip-history" id="dashTipHistory">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Share & Embed -->
+          <div class="card" style="margin-top: 1.5rem;">
+            <h3 class="card-title">🔗 Share Your TipJar</h3>
+            <div class="share-section">
+              <div class="share-link-group">
+                <label class="input-label">Your TipJar Link</label>
+                <div class="input-with-btn">
+                  <input type="text" id="dashShareLink" class="input" readonly>
+                  <button class="btn btn-outline" id="copyShareLink">Copy</button>
+                </div>
+              </div>
+              <div class="share-link-group">
+                <label class="input-label">Embed Widget Code</label>
+                <div class="input-with-btn">
+                  <textarea id="dashEmbedCode" class="input textarea code-text" readonly rows="3"></textarea>
+                  <button class="btn btn-outline" id="copyDashEmbed">Copy</button>
+                </div>
+              </div>
+              <div class="share-buttons">
+                <button class="btn btn-share btn-twitter" id="shareTwitter">𝕏 Share on X</button>
+                <button class="btn btn-share btn-generic" id="shareEmail">📧 Email</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Revenue Split Configuration -->
+          <div class="card" style="margin-top: 1.5rem;">
+            <h3 class="card-title">💰 Revenue Split</h3>
+            <p class="card-desc">Split incoming tips with a collaborator automatically via smart contract</p>
+            <div id="revenueSplitStatus" class="revenue-split-status">
+              <!-- Dynamically populated -->
+            </div>
+            <form id="revenueSplitForm" class="form" style="margin-top: 1rem;">
+              <div class="form-group">
+                <label class="input-label">Collaborator Name</label>
+                <input type="text" id="splitCollabName" class="input" placeholder="e.g. My Manager" maxlength="50">
+              </div>
+              <div class="form-group">
+                <label class="input-label">Collaborator Algorand Address</label>
+                <input type="text" id="splitCollabAddr" class="input" placeholder="ALGO address...">
+              </div>
+              <div class="form-group">
+                <label class="input-label">Split Percentage (0-50%)</label>
+                <div class="input-with-suffix">
+                  <input type="number" id="splitPercent" class="input" placeholder="e.g. 20" min="0" max="50" step="1">
+                  <span class="input-suffix">%</span>
+                </div>
+              </div>
+              <div style="display: flex; gap: 0.75rem;">
+                <button type="submit" class="btn btn-primary" style="flex: 1;">Set Revenue Split</button>
+                <button type="button" class="btn btn-outline" id="removeSplitBtn">Remove Split</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- My NFT Badges -->
+          <div class="card" style="margin-top: 1.5rem;">
+            <h3 class="card-title">🏅 My Earned Badges</h3>
+            <p class="card-desc">NFT appreciation badges earned from your generous tipping</p>
+            <div class="badge-grid" id="dashBadges">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════ WIDGET DEMO PAGE ═════════════════════════════ -->
+    <section class="page" id="page-widget-demo">
+      <div class="page-header">
+        <div class="container">
+          <h1 class="page-title">🧩 Embeddable Widget</h1>
+          <p class="page-subtitle">Add a tip button to any website</p>
+        </div>
+      </div>
+      <div class="container">
+        <div class="widget-demo-layout">
+          <!-- Demo Preview -->
+          <div class="widget-preview-card">
+            <h3>Live Preview</h3>
+            <p>This is what the widget looks like on your website:</p>
+            <div class="widget-preview-frame" id="widgetPreviewFrame">
+              <div class="mock-website">
+                <div class="mock-header">📰 My Blog</div>
+                <div class="mock-content">
+                  <h4>Understanding Blockchain Technology</h4>
+                  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore...</p>
+                  <div class="widget-embed-spot" id="widgetEmbedSpot">
+                    <!-- Widget will be injected here -->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Configuration -->
+          <div class="widget-config-card">
+            <h3>Configure Widget</h3>
+            <form id="widgetConfigForm" class="form">
+              <div class="form-group">
+                <label class="input-label">Creator Address</label>
+                <input type="text" id="widgetCreatorAddr" class="input" placeholder="ALGO address...">
+              </div>
+              <div class="form-group">
+                <label class="input-label">Button Text</label>
+                <input type="text" id="widgetBtnText" class="input" value="💎 Send a Tip" maxlength="30">
+              </div>
+              <div class="form-group">
+                <label class="input-label">Theme</label>
+                <select id="widgetTheme" class="input select">
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                  <option value="gradient">Gradient</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="input-label">Default Amount (ALGO)</label>
+                <input type="number" id="widgetDefaultAmt" class="input" value="2" min="0.1" step="0.1">
+              </div>
+              <button type="button" class="btn btn-primary btn-full" id="updateWidgetPreview">Update Preview</button>
+            </form>
+
+            <div class="form-group" style="margin-top: 1.5rem;">
+              <label class="input-label">Embed Code</label>
+              <textarea id="widgetEmbedOutput" class="input textarea code-text" readonly rows="6"></textarea>
+              <button class="btn btn-outline btn-full" style="margin-top: 0.5rem;" id="copyWidgetCode">📋 Copy Embed Code</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════ VERIFY TIP PAGE ══════════════════════════════ -->
+    <section class="page" id="page-verify">
+      <div class="page-header">
+        <div class="container">
+          <h1 class="page-title">🔍 Verify Tipping Record</h1>
+          <p class="page-subtitle">On-chain verification of tips and creator records</p>
+        </div>
+      </div>
+      <div class="container">
+        <div class="verify-layout">
+          <!-- Verify by Transaction ID -->
+          <div class="card verify-card">
+            <h3 class="card-title">🔎 Verify by Transaction ID</h3>
+            <p class="card-desc">Enter a transaction ID to verify the tip was recorded on-chain</p>
+            <form id="verifyTxForm" class="form">
+              <div class="form-group">
+                <label class="input-label">Transaction ID</label>
+                <div class="input-with-btn">
+                  <input type="text" id="verifyTxId" class="input" placeholder="Enter transaction ID or paste DEMO_TX_...">
+                  <button type="submit" class="btn btn-primary">Verify</button>
+                </div>
+              </div>
+            </form>
+            <div id="verifyTxResult" class="verify-result" style="display: none;">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Verify Creator Record -->
+          <div class="card verify-card">
+            <h3 class="card-title">👤 Verify Creator Record</h3>
+            <p class="card-desc">Verify a creator's on-chain tipping history and totals</p>
+            <form id="verifyCreatorForm" class="form">
+              <div class="form-group">
+                <label class="input-label">Creator Address</label>
+                <div class="input-with-btn">
+                  <input type="text" id="verifyCreatorAddr" class="input" placeholder="Enter creator's Algorand address">
+                  <button type="submit" class="btn btn-primary">Verify</button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="input-label" style="font-size: 0.75rem; color: var(--text-muted);">Quick select a demo creator:</label>
+                <select id="verifyCreatorSelect" class="input select">
+                  <option value="">-- Select a creator --</option>
+                </select>
+              </div>
+            </form>
+            <div id="verifyCreatorResult" class="verify-result" style="display: none;">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Verification Info -->
+        <div class="card" style="margin-top: 2rem;">
+          <h3 class="card-title">ℹ️ About On-Chain Verification</h3>
+          <div class="verify-info-grid">
+            <div class="verify-info-item">
+              <div class="verify-info-icon">🔗</div>
+              <h4>Blockchain-Backed</h4>
+              <p>Every tip is recorded on the Algorand blockchain, ensuring complete transparency and immutability.</p>
+            </div>
+            <div class="verify-info-item">
+              <div class="verify-info-icon">✅</div>
+              <h4>Tamper-Proof</h4>
+              <p>On-chain records cannot be altered. You can independently verify any tip transaction.</p>
+            </div>
+            <div class="verify-info-item">
+              <div class="verify-info-icon">📊</div>
+              <h4>Auditable</h4>
+              <p>Creator totals are computed from individual transactions, enabling full audit trail verification.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════ ANALYTICS PAGE ═══════════════════════════════ -->
+    <section class="page" id="page-analytics">
+      <div class="page-header">
+        <div class="container">
+          <h1 class="page-title">📊 Analytics Dashboard</h1>
+          <p class="page-subtitle">Platform-wide tipping trends and insights</p>
+        </div>
+      </div>
+      <div class="container">
+        <!-- Analytics Stats Row -->
+        <div class="stats-grid" style="margin-bottom: 2rem;">
+          <div class="stat-card stat-primary">
+            <div class="stat-icon">📈</div>
+            <div class="stat-info">
+              <span class="stat-value" id="analyticsTotalVolume">0</span>
+              <span class="stat-label">Total Volume (ALGO)</span>
+            </div>
+          </div>
+          <div class="stat-card stat-success">
+            <div class="stat-icon">🎯</div>
+            <div class="stat-info">
+              <span class="stat-value" id="analyticsTotalTips">0</span>
+              <span class="stat-label">Total Tips</span>
+            </div>
+          </div>
+          <div class="stat-card stat-info">
+            <div class="stat-icon">🏅</div>
+            <div class="stat-info">
+              <span class="stat-value" id="analyticsBadgeCount">0</span>
+              <span class="stat-label">Badges Minted</span>
+            </div>
+          </div>
+          <div class="stat-card stat-warning">
+            <div class="stat-icon">🤝</div>
+            <div class="stat-info">
+              <span class="stat-value" id="analyticsActiveSplits">0</span>
+              <span class="stat-label">Active Splits</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="analytics-grid">
+          <!-- Daily Tip Volume Chart -->
+          <div class="card chart-card">
+            <h3 class="card-title">📈 Daily Tip Volume (Last 30 Days)</h3>
+            <div class="chart-controls">
+              <button class="chart-toggle active" data-chart="volume" data-metric="volume">Volume (ALGO)</button>
+              <button class="chart-toggle" data-chart="volume" data-metric="tips">Tip Count</button>
+            </div>
+            <div class="chart-container">
+              <canvas id="chartDailyVolume" width="600" height="280"></canvas>
+            </div>
+          </div>
+
+          <!-- Category Breakdown Chart -->
+          <div class="card chart-card">
+            <h3 class="card-title">🎨 Tips by Category</h3>
+            <div class="chart-container">
+              <canvas id="chartCategoryBreakdown" width="400" height="280"></canvas>
+            </div>
+            <div class="chart-legend" id="categoryLegend">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Weekly Trend Chart -->
+          <div class="card chart-card">
+            <h3 class="card-title">📊 Weekly Trends</h3>
+            <div class="chart-container">
+              <canvas id="chartWeeklyTrend" width="600" height="280"></canvas>
+            </div>
+          </div>
+
+          <!-- Top Supporters Distribution -->
+          <div class="card chart-card">
+            <h3 class="card-title">💖 Top Supporter Distribution</h3>
+            <div class="chart-container">
+              <canvas id="chartSupporterDist" width="400" height="280"></canvas>
+            </div>
+            <div class="chart-legend" id="supporterLegend">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Revenue Split Analytics -->
+        <div class="card" style="margin-top: 2rem;">
+          <h3 class="card-title">🤝 Active Revenue Splits</h3>
+          <p class="card-desc">Creators sharing earnings with collaborators via smart contract</p>
+          <div class="revenue-splits-list" id="analyticsRevenueSplits">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ─── Tip Success Modal ───────────────────────────────── -->
+  <div class="modal-overlay" id="tipSuccessModal">
+    <div class="modal">
+      <div class="modal-icon">🎉</div>
+      <h2 class="modal-title">Tip Sent Successfully!</h2>
+      <p class="modal-desc" id="tipSuccessMsg">Your tip has been sent.</p>
+      <div class="modal-details" id="tipSuccessDetails"></div>
+      <button class="btn btn-primary" id="closeTipModal">Awesome! 🎊</button>
+    </div>
+  </div>
+
+  <!-- ─── Toast Container ─────────────────────────────────── -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ─── Footer ──────────────────────────────────────────── -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-brand">
+          <span class="logo-icon">💎</span>
+          <span class="logo-text">TipJar</span>
+          <p>Empowering creators with blockchain-powered micropayments.</p>
+        </div>
+        <div class="footer-links">
+          <div class="footer-col">
+            <h4>Platform</h4>
+            <a href="#" data-page="explore">Explore Creators</a>
+            <a href="#" data-page="leaderboard">Leaderboard</a>
+            <a href="#" data-page="analytics">Analytics</a>
+            <a href="#" data-page="widget-demo">Embed Widget</a>
+          </div>
+          <div class="footer-col">
+            <h4>Creators</h4>
+            <a href="#" data-page="dashboard">Dashboard</a>
+            <a href="#" data-page="verify">Verify Tips</a>
+            <a href="#" id="footerRegister">Register</a>
+          </div>
+          <div class="footer-col">
+            <h4>Built With</h4>
+            <a href="https://algorand.com" target="_blank">Algorand</a>
+            <a href="https://developer.algorand.org" target="_blank">Algo SDK</a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 TipJar. Built on Algorand. A student project for blockchain education.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/wallet.js"></script>
+  <script src="js/contract.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/widget.js"></script>
+</body>
+</html>
