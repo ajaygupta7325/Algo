@@ -57,8 +57,8 @@ const CONFIG = Object.freeze({
 // ─── Demo Creators (for showcasing before blockchain deployment) ─────
 const DEMO_CREATORS = [
   {
-    address: 'DEMO1AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
-    name: 'Alex Rivera',
+    address: 'VEMZLW63MYLV3DIGTJTWQRBXLWCSXV5QICXPGBXONFIIDDR4PX4KQPC2WI',
+    name: 'babku',
     bio: 'Full-stack developer and tech blogger. Writing about Web3, DeFi, and blockchain architecture. 500+ articles published.',
     category: 'blogger',
     profileImage: '',
@@ -142,14 +142,14 @@ const DEMO_CREATORS = [
 const DEMO_TIPS = [
   { from: 'Anon_Supporter', fromAddr: 'ANON1...AAAA', to: 'Maya Chen', toAddr: DEMO_CREATORS[1].address, amount: 5_000_000, message: 'Love your latest collection! 🎨', time: Date.now() - 120_000 },
   { from: 'CryptoFan42', fromAddr: 'FAN42...BBBB', to: 'Jordan Bass', toAddr: DEMO_CREATORS[2].address, amount: 2_000_000, message: 'Your lo-fi beats got me through finals!', time: Date.now() - 360_000 },
-  { from: 'Web3Builder', fromAddr: 'WEB3B...CCCC', to: 'Alex Rivera', toAddr: DEMO_CREATORS[0].address, amount: 10_000_000, message: 'That DeFi article was incredibly helpful', time: Date.now() - 900_000 },
+  { from: 'Web3Builder', fromAddr: 'WEB3B...CCCC', to: 'babku', toAddr: DEMO_CREATORS[0].address, amount: 10_000_000, message: 'That DeFi article was incredibly helpful', time: Date.now() - 900_000 },
   { from: 'ArtLover', fromAddr: 'ARTLV...DDDD', to: 'Luna Martinez', toAddr: DEMO_CREATORS[5].address, amount: 25_000_000, message: 'Stunning sunset series! 🌅', time: Date.now() - 1_800_000 },
   { from: 'PhotoEnthusiast', fromAddr: 'PHOTO...EEEE', to: 'Sarah Kim', toAddr: DEMO_CREATORS[3].address, amount: 3_000_000, message: 'Your Tokyo series is breathtaking', time: Date.now() - 3_600_000 },
   { from: 'MusicAddict', fromAddr: 'MUSIC...FFFF', to: 'Marcus Cole', toAddr: DEMO_CREATORS[6].address, amount: 5_000_000, message: 'Friday sessions are the highlight of my week 🎹', time: Date.now() - 7_200_000 },
   { from: 'StudentDev', fromAddr: 'STUDT...GGGG', to: 'Dev Patel', toAddr: DEMO_CREATORS[4].address, amount: 1_000_000, message: 'Your tutorial helped me land my first job!', time: Date.now() - 14_400_000 },
   { from: 'NatureFan', fromAddr: 'NATRE...HHHH', to: 'Emily Zhang', toAddr: DEMO_CREATORS[7].address, amount: 8_000_000, message: 'The butterfly macro shots are incredible 🦋', time: Date.now() - 28_800_000 },
   { from: 'AnonymousTipper', fromAddr: 'ANON2...IIII', to: 'Maya Chen', toAddr: DEMO_CREATORS[1].address, amount: 15_000_000, message: '', time: Date.now() - 43_200_000 },
-  { from: 'BlockchainBob', fromAddr: 'BLOCK...JJJJ', to: 'Alex Rivera', toAddr: DEMO_CREATORS[0].address, amount: 4_000_000, message: 'Great technical deep dive on consensus', time: Date.now() - 86_400_000 },
+  { from: 'BlockchainBob', fromAddr: 'BLOCK...JJJJ', to: 'babku', toAddr: DEMO_CREATORS[0].address, amount: 4_000_000, message: 'Great technical deep dive on consensus', time: Date.now() - 86_400_000 },
   { from: 'CodeNewbie', fromAddr: 'CODEN...KKKK', to: 'Dev Patel', toAddr: DEMO_CREATORS[4].address, amount: 2_000_000, message: 'Finally understood smart contracts thanks to you!', time: Date.now() - 100_000_000 },
   { from: 'JazzFan99', fromAddr: 'JAZZF...LLLL', to: 'Marcus Cole', toAddr: DEMO_CREATORS[6].address, amount: 7_500_000, message: 'Your improvisation skills are amazing', time: Date.now() - 150_000_000 },
 ];
@@ -197,8 +197,8 @@ function getBadgeTier(totalTippedMicro) {
 const DEMO_BADGES = [
   { supporter: 'ArtLover', supporterAddr: 'ARTLV...DDDD', creator: 'Luna Martinez', creatorAddr: DEMO_CREATORS[5].address, tier: 'gold', totalTipped: 89_000_000, mintedAt: Date.now() - 86_400_000, assetId: 1001 },
   { supporter: 'CryptoFan42', supporterAddr: 'FAN42...BBBB', creator: 'Maya Chen', creatorAddr: DEMO_CREATORS[1].address, tier: 'silver', totalTipped: 67_500_000, mintedAt: Date.now() - 172_800_000, assetId: 1002 },
-  { supporter: 'BlockchainBob', supporterAddr: 'BLOCK...JJJJ', creator: 'Alex Rivera', creatorAddr: DEMO_CREATORS[0].address, tier: 'silver', totalTipped: 54_000_000, mintedAt: Date.now() - 259_200_000, assetId: 1003 },
-  { supporter: 'Web3Builder', supporterAddr: 'WEB3B...CCCC', creator: 'Alex Rivera', creatorAddr: DEMO_CREATORS[0].address, tier: 'silver', totalTipped: 45_000_000, mintedAt: Date.now() - 345_600_000, assetId: 1004 },
+  { supporter: 'BlockchainBob', supporterAddr: 'BLOCK...JJJJ', creator: 'babku', creatorAddr: DEMO_CREATORS[0].address, tier: 'silver', totalTipped: 54_000_000, mintedAt: Date.now() - 259_200_000, assetId: 1003 },
+  { supporter: 'Web3Builder', supporterAddr: 'WEB3B...CCCC', creator: 'babku', creatorAddr: DEMO_CREATORS[0].address, tier: 'silver', totalTipped: 45_000_000, mintedAt: Date.now() - 345_600_000, assetId: 1004 },
   { supporter: 'MusicAddict', supporterAddr: 'MUSIC...FFFF', creator: 'Jordan Bass', creatorAddr: DEMO_CREATORS[2].address, tier: 'silver', totalTipped: 38_500_000, mintedAt: Date.now() - 432_000_000, assetId: 1005 },
   { supporter: 'NatureFan', supporterAddr: 'NATRE...HHHH', creator: 'Emily Zhang', creatorAddr: DEMO_CREATORS[7].address, tier: 'silver', totalTipped: 32_000_000, mintedAt: Date.now() - 518_400_000, assetId: 1006 },
   { supporter: 'PhotoEnthusiast', supporterAddr: 'PHOTO...EEEE', creator: 'Sarah Kim', creatorAddr: DEMO_CREATORS[3].address, tier: 'bronze', totalTipped: 28_000_000, mintedAt: Date.now() - 604_800_000, assetId: 1007 },
