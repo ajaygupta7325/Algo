@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Security Headers -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://esm.sh; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://testnet-api.algonode.cloud https://testnet-idx.algonode.cloud https://mainnet-api.algonode.cloud https://mainnet-idx.algonode.cloud wss://*.walletconnect.com https://*.walletconnect.com; img-src 'self' https: data:; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' data: https://unpkg.com https://testnet-api.algonode.cloud https://testnet-idx.algonode.cloud https://mainnet-api.algonode.cloud https://mainnet-idx.algonode.cloud wss://*.walletconnect.com https://*.walletconnect.com wss://*.walletconnect.org https://*.walletconnect.org https://*.perawallet.app wss://*.perawallet.app; img-src 'self' https: data:;">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()">
@@ -16,7 +16,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
   <!-- AlgoSDK from CDN (UMD browser build) -->
   <script src="https://unpkg.com/algosdk@3.5.2/dist/browser/algosdk.min.js"></script>
-  <!-- Pera & Defly Wallet SDKs loaded dynamically via esm.sh in wallet.js (no UMD builds available) -->
+  <!-- Pera Wallet SDK (self-contained bundle, built via esbuild) -->
+  <script src="js/pera-connect.bundle.js"></script>
+  <!-- Defly Wallet SDK (self-contained bundle, built via esbuild) -->
+  <script src="js/defly-connect.bundle.js"></script>
 </head>
 <body>
   <!-- ─── Navigation ──────────────────────────────────────── -->

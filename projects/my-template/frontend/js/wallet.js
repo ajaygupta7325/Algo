@@ -101,16 +101,15 @@ class WalletManager {
     // Balance refresh interval handle
     this._balanceRefreshTimer = null;
 
-    // SDKs loaded asynchronously — await this before using wallet SDKs
+    // SDKs are loaded synchronously via script tags (self-contained bundles)
     this._sdksReady = this._initSDKs();
     this._initBalanceRefresh();
   }
 
   /**
    * Initialize wallet SDKs and Algod client.
-   * Pera & Defly SDKs are loaded dynamically via esm.sh since they
-   * do not ship UMD builds.  Returns a Promise so callers can await
-   * readiness before attempting wallet operations.
+   * Pera & Defly SDK bundles are loaded via <script> tags in index.html
+   * and set window.PeraWalletConnect / window.DeflyWalletConnect globals.
    */
   async _initSDKs() {
     // Initialize Algod client for querying balances and sending txns
@@ -126,53 +125,59 @@ class WalletManager {
       console.warn('AlgoSDK not available for Algod client:', e);
     }
 
-    // ── Dynamic-import Pera Wallet SDK (v1.5.0, supports algosdk v3) ──
-    try {
-      const peraModule = await import('https://esm.sh/@perawallet/connect@1.5.0');
-      const PeraWalletConnect = peraModule.PeraWalletConnect;
-      this.peraWallet = new PeraWalletConnect({
-        chainId: CONFIG.NETWORK === 'mainnet' ? 416001 : 416002,
-      });
-      // Auto-reconnect if previously connected (guarded against race)
-      this.peraWallet.reconnectSession().then((accounts) => {
-        if (accounts.length > 0 && !this.connected) {
-          this.address = accounts[0];
-          this.connected = true;
-          this.mode = 'pera';
-          this._fetchBalance().then(() => this._notify());
-        }
-      }).catch(() => { /* No previous session */ });
+    // ── Initialize Pera Wallet (loaded from pera-connect.bundle.js) ──
+    if (typeof PeraWalletConnect !== 'undefined') {
+      try {
+        this.peraWallet = new PeraWalletConnect({
+          chainId: CONFIG.NETWORK === 'mainnet' ? 416001 : 416002,
+        });
+        console.log('[TipJar] Pera Wallet SDK initialized ✅');
 
-      // Handle disconnect events
-      this.peraWallet.connector?.on('disconnect', () => {
-        if (this.mode === 'pera') this.disconnect();
-      });
-    } catch (e) {
-      console.warn('Pera Wallet SDK could not be loaded:', e);
+        // Auto-reconnect if previously connected
+        this.peraWallet.reconnectSession().then((accounts) => {
+          if (accounts.length > 0 && !this.connected) {
+            this.address = accounts[0];
+            this.connected = true;
+            this.mode = 'pera';
+            this._fetchBalance().then(() => this._notify());
+          }
+        }).catch(() => { /* No previous session */ });
+
+        this.peraWallet.connector?.on('disconnect', () => {
+          if (this.mode === 'pera') this.disconnect();
+        });
+      } catch (e) {
+        console.warn('[TipJar] Pera Wallet initialization error:', e);
+      }
+    } else {
+      console.warn('[TipJar] PeraWalletConnect not found — check that pera-connect.bundle.js loaded');
     }
 
-    // ── Dynamic-import Defly Wallet SDK (v1.2.1, supports algosdk v3) ──
-    try {
-      const deflyModule = await import('https://esm.sh/@blockshake/defly-connect@1.2.1');
-      const DeflyWalletConnect = deflyModule.DeflyWalletConnect;
-      this.deflyWallet = new DeflyWalletConnect({
-        chainId: CONFIG.NETWORK === 'mainnet' ? 416001 : 416002,
-      });
-      // Auto-reconnect (guarded against race with Pera)
-      this.deflyWallet.reconnectSession().then((accounts) => {
-        if (accounts.length > 0 && !this.connected) {
-          this.address = accounts[0];
-          this.connected = true;
-          this.mode = 'defly';
-          this._fetchBalance().then(() => this._notify());
-        }
-      }).catch(() => { /* No previous session */ });
+    // ── Initialize Defly Wallet (loaded from defly-connect.bundle.js) ──
+    if (typeof DeflyWalletConnect !== 'undefined') {
+      try {
+        this.deflyWallet = new DeflyWalletConnect({
+          chainId: CONFIG.NETWORK === 'mainnet' ? 416001 : 416002,
+        });
+        console.log('[TipJar] Defly Wallet SDK initialized ✅');
 
-      this.deflyWallet.connector?.on('disconnect', () => {
-        if (this.mode === 'defly') this.disconnect();
-      });
-    } catch (e) {
-      console.warn('Defly Wallet SDK could not be loaded:', e);
+        this.deflyWallet.reconnectSession().then((accounts) => {
+          if (accounts.length > 0 && !this.connected) {
+            this.address = accounts[0];
+            this.connected = true;
+            this.mode = 'defly';
+            this._fetchBalance().then(() => this._notify());
+          }
+        }).catch(() => { /* No previous session */ });
+
+        this.deflyWallet.connector?.on('disconnect', () => {
+          if (this.mode === 'defly') this.disconnect();
+        });
+      } catch (e) {
+        console.warn('[TipJar] Defly Wallet initialization error:', e);
+      }
+    } else {
+      console.warn('[TipJar] DeflyWalletConnect not found — check that defly-connect.bundle.js loaded');
     }
   }
 
@@ -351,7 +356,7 @@ class WalletManager {
     await this._sdksReady;
 
     if (!this.peraWallet) {
-      showToast('Pera Wallet SDK not available. Please refresh the page or use Demo mode.', 'error');
+      showToast('Pera Wallet SDK not loaded. Make sure pera-connect.bundle.js is present and refresh the page.', 'error');
       return false;
     }
 
@@ -395,7 +400,7 @@ class WalletManager {
     await this._sdksReady;
 
     if (!this.deflyWallet) {
-      showToast('Defly Wallet SDK not available. Please refresh the page or use Demo mode.', 'error');
+      showToast('Defly Wallet SDK not loaded. Make sure defly-connect.bundle.js is present and refresh the page.', 'error');
       return false;
     }
 
