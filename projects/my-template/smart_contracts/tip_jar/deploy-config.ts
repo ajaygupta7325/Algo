@@ -39,23 +39,23 @@ export async function deploy() {
   }
 
   // Verify deployment by reading platform stats
-  const statsResponse = await appClient.send.getPlatformStats({})
+  const statsResponse = await appClient.send.getPlatformStats({ args: [] })
   console.log(`Platform total tips processed: ${statsResponse.return} microALGO`)
 
-  const creatorsResponse = await appClient.send.getTotalCreators({})
+  const creatorsResponse = await appClient.send.getTotalCreators({ args: [] })
   console.log(`Total registered creators: ${creatorsResponse.return}`)
 
-  const minTipResponse = await appClient.send.getMinTipAmount({})
+  const minTipResponse = await appClient.send.getMinTipAmount({ args: [] })
   console.log(`Minimum tip amount: ${minTipResponse.return} microALGO (${Number(minTipResponse.return) / 1_000_000} ALGO)`)
 
-  const feeResponse = await appClient.send.getPlatformFee({})
+  const feeResponse = await appClient.send.getPlatformFee({ args: [] })
   console.log(`Platform fee: ${Number(feeResponse.return) / 100}%`)
 
   // Verify new enhanced features
-  const badgeResponse = await appClient.send.getTotalBadgesMinted({})
+  const badgeResponse = await appClient.send.getTotalBadgesMinted({ args: [] })
   console.log(`Total badges minted: ${badgeResponse.return}`)
 
-  const thresholdResponse = await appClient.send.getBronzeThreshold({})
+  const thresholdResponse = await appClient.send.getBronzeThreshold({ args: [] })
   console.log(`Bronze badge threshold: ${Number(thresholdResponse.return) / 1_000_000} ALGO`)
 
   console.log('=== TipJar Deployment Complete (Enhanced Version) ===')
