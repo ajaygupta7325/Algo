@@ -9,18 +9,18 @@ const CONFIG = Object.freeze({
   // Algorand Network (switch between testnet/mainnet/localnet)
   NETWORK: 'testnet',
 
-  // Algod client settings
-  ALGOD_SERVER: 'https://testnet-api.algonode.cloud',
-  ALGOD_PORT: '',
+  // Algod client settings (Nodely free TestNet endpoints)
+  ALGOD_SERVER: 'https://testnet-api.4160.nodely.dev',
+  ALGOD_PORT: '443',
   ALGOD_TOKEN: '',
 
   // Indexer settings
-  INDEXER_SERVER: 'https://testnet-idx.algonode.cloud',
-  INDEXER_PORT: '',
+  INDEXER_SERVER: 'https://testnet-idx.4160.nodely.dev',
+  INDEXER_PORT: '443',
   INDEXER_TOKEN: '',
 
-  // Smart contract App ID (set after deployment)
-  APP_ID: 0,
+  // Smart contract App ID (deployed on TestNet)
+  APP_ID: 755799596,
 
   // Platform settings
   MIN_TIP_ALGO: 0.1,

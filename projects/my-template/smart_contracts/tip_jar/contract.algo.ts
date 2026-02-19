@@ -92,47 +92,6 @@ export class TipJar extends Contract {
 
   // ─── Contract Methods ──────────────────────────────────────────────
 
-  // ─── Constants ───────────────────────────────────────────────────
-  /** Minimum contract balance to keep (0.1 ALGO for MBR) */
-  minContractBalance: uint64 = 100_000
-
-  /** Maximum name length (local state limit) */
-  maxNameLen: uint64 = 50
-
-  /** Maximum bio length (local state limit) */
-  maxBioLen: uint64 = 200
-
-  /** Maximum category length */
-  maxCategoryLen: uint64 = 20
-
-  /** Maximum profile image URL length */
-  maxImageLen: uint64 = 200
-
-  /** Maximum collaborator name length */
-  maxCollabNameLen: uint64 = 50
-
-  /** Algorand address string length */
-  addrLen: uint64 = 58
-
-  // ─── Guards ─────────────────────────────────────────────────────
-
-  /** Ensure the contract is not paused (circuit breaker) */
-  private assertNotPaused(): void {
-    assert(this.isPaused.value === 0, 'Contract is paused')
-  }
-
-  /** Ensure the caller is the admin */
-  private assertAdmin(): void {
-    assert(Txn.sender.bytes === this.adminAddress.value, 'Only admin can perform this action')
-  }
-
-  /** Ensure the caller is a registered creator */
-  private assertRegistered(): void {
-    assert(this.isRegistered(Txn.sender).value === 1, 'Not a registered creator')
-  }
-
-  // ─── Contract Methods ──────────────────────────────────────────────
-
   /**
    * Initialize the contract - called on creation
    * Sets the admin to the creator of the contract
@@ -165,7 +124,7 @@ export class TipJar extends Contract {
    * Prevents registrations, tips, badge minting, and revenue split changes
    */
   pauseContract(): string {
-    this.assertAdmin()
+    assert(Txn.sender.bytes === this.adminAddress.value, 'Only admin can perform this action')
     this.isPaused.value = 1
     log('TipJar:Paused')
     return 'Contract paused'
@@ -175,7 +134,7 @@ export class TipJar extends Contract {
    * Admin: Unpause the contract
    */
   unpauseContract(): string {
-    this.assertAdmin()
+    assert(Txn.sender.bytes === this.adminAddress.value, 'Only admin can perform this action')
     this.isPaused.value = 0
     log('TipJar:Unpaused')
     return 'Contract unpaused'
@@ -187,7 +146,7 @@ export class TipJar extends Contract {
    * @param newAdmin - The proposed new admin account
    */
   transferAdmin(newAdmin: Account): string {
-    this.assertAdmin()
+    assert(Txn.sender.bytes === this.adminAddress.value, 'Only admin can perform this action')
     assert(newAdmin !== Txn.sender, 'Cannot transfer to current admin')
     this.pendingAdminAddress.value = newAdmin.bytes
     log('TipJar:AdminTransferInitiated')
@@ -219,7 +178,7 @@ export class TipJar extends Contract {
    * @param profileImage - Profile image URL (max 200 chars)
    */
   registerCreator(name: string, bio: string, category: string, profileImage: string): string {
-    this.assertNotPaused()
+    assert(this.isPaused.value === 0, 'Contract is paused')
 
     // SECURITY: Prevent double-registration inflating totalCreators
     assert(this.isRegistered(Txn.sender).value !== 1, 'Already registered as a creator')
@@ -243,7 +202,7 @@ export class TipJar extends Contract {
     this.totalCreators.value = this.totalCreators.value + 1
 
     log('TipJar:CreatorRegistered')
-    return `Creator ${name} registered successfully`
+    return 'Creator registered successfully'
   }
 
   /**
@@ -254,8 +213,8 @@ export class TipJar extends Contract {
    * @param profileImage - Updated profile image URL (max 200 chars)
    */
   updateProfile(name: string, bio: string, category: string, profileImage: string): string {
-    this.assertNotPaused()
-    this.assertRegistered()
+    assert(this.isPaused.value === 0, 'Contract is paused')
+    assert(this.isRegistered(Txn.sender).value === 1, 'Not a registered creator')
 
     // Input validation - check non-empty fields
     assert(name !== '', 'Name cannot be empty')
@@ -282,8 +241,8 @@ export class TipJar extends Contract {
    * @param splitPercent - Percentage to give collaborator (1-50)
    */
   setRevenueSplit(collaboratorAddr: string, collaboratorName: string, splitPercent: uint64): string {
-    this.assertNotPaused()
-    this.assertRegistered()
+    assert(this.isPaused.value === 0, 'Contract is paused')
+    assert(this.isRegistered(Txn.sender).value === 1, 'Not a registered creator')
 
     assert(splitPercent >= 1, 'Split must be at least 1%. Use removeRevenueSplit to clear')
     assert(splitPercent <= 50, 'Split cannot exceed 50%')
@@ -301,8 +260,8 @@ export class TipJar extends Contract {
    * Remove revenue split
    */
   removeRevenueSplit(): string {
-    this.assertNotPaused()
-    this.assertRegistered()
+    assert(this.isPaused.value === 0, 'Contract is paused')
+    assert(this.isRegistered(Txn.sender).value === 1, 'Not a registered creator')
 
     this.revSplitAddress(Txn.sender).value = ''
     this.revSplitName(Txn.sender).value = ''
@@ -333,7 +292,7 @@ export class TipJar extends Contract {
    * @param tipPayment - The payment transaction for the tip
    */
   sendTip(creator: Account, message: string, tipPayment: gtxn.PaymentTxn): string {
-    this.assertNotPaused()
+    assert(this.isPaused.value === 0, 'Contract is paused')
 
     // Verify the creator is registered
     assert(this.isRegistered(creator).value === 1, 'Recipient is not a registered creator')
@@ -355,8 +314,8 @@ export class TipJar extends Contract {
     assert(Txn.sender !== creator, 'Cannot tip yourself')
 
     // Calculate platform fee
-    const feeAmount = (tipAmount * this.platformFeeBps.value) / 10_000
-    const afterFee = tipAmount - feeAmount
+    const feeAmount: uint64 = (tipAmount * this.platformFeeBps.value) / Uint64(10_000)
+    const afterFee: uint64 = tipAmount - feeAmount
 
     // Track accumulated fees
     this.totalFeesAccumulated.value = this.totalFeesAccumulated.value + feeAmount
@@ -366,8 +325,8 @@ export class TipJar extends Contract {
 
     if (splitPercent > 0) {
       // Revenue split active - divide afterFee between creator and collaborator
-      const collaboratorAmount = (afterFee * splitPercent) / 100
-      const creatorAmount = afterFee - collaboratorAmount
+      const collaboratorAmount: uint64 = (afterFee * splitPercent) / Uint64(100)
+      const creatorAmount: uint64 = afterFee - collaboratorAmount
 
       // Transfer creator's share
       itxn
@@ -400,7 +359,7 @@ export class TipJar extends Contract {
     this.totalTipCount.value = this.totalTipCount.value + 1
 
     log('TipJar:TipSent')
-    return `Tip of ${tipAmount} microALGO sent to creator`
+    return 'Tip sent successfully'
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -415,7 +374,7 @@ export class TipJar extends Contract {
    * @param creatorAddr - The creator this badge is for
    */
   mintBadge(supporter: Account, badgeTier: uint64, creatorAddr: Account): string {
-    this.assertNotPaused()
+    assert(this.isPaused.value === 0, 'Contract is paused')
 
     // Only admin or the creator can mint badges
     assert(
@@ -457,7 +416,7 @@ export class TipJar extends Contract {
     this.totalBadgesMinted.value = this.totalBadgesMinted.value + 1
 
     log('TipJar:BadgeMinted')
-    return `${tierName} badge minted successfully`
+    return 'Badge minted successfully'
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -574,7 +533,7 @@ export class TipJar extends Contract {
    * @param newMin - New minimum tip amount in microALGO (must be >= 10_000 = 0.01 ALGO)
    */
   setMinTipAmount(newMin: uint64): string {
-    this.assertAdmin()
+    assert(Txn.sender.bytes === this.adminAddress.value, 'Only admin can perform this action')
     assert(newMin >= 10_000, 'Minimum tip must be at least 0.01 ALGO (10_000 microALGO)')
     this.minTipAmount.value = newMin
     log('TipJar:MinTipUpdated')
@@ -586,7 +545,7 @@ export class TipJar extends Contract {
    * @param newFeeBps - New fee in basis points (100 = 1%, max 1000 = 10%)
    */
   setPlatformFee(newFeeBps: uint64): string {
-    this.assertAdmin()
+    assert(Txn.sender.bytes === this.adminAddress.value, 'Only admin can perform this action')
     assert(newFeeBps <= 1000, 'Fee cannot exceed 10%')
     this.platformFeeBps.value = newFeeBps
     log('TipJar:FeeUpdated')
@@ -599,13 +558,13 @@ export class TipJar extends Contract {
    * @param amount - Amount to withdraw in microALGO
    */
   withdrawPlatformFees(amount: uint64): string {
-    this.assertAdmin()
+    assert(Txn.sender.bytes === this.adminAddress.value, 'Only admin can perform this action')
     assert(amount > 0, 'Withdrawal amount must be positive')
     assert(amount <= this.totalFeesAccumulated.value, 'Amount exceeds accumulated fees')
 
     // Protect minimum contract balance
     const contractBalance = Global.currentApplicationAddress.balance
-    assert(contractBalance - amount >= this.minContractBalance, 'Withdrawal would leave contract below minimum balance')
+    assert(contractBalance - amount >= Uint64(100_000), 'Withdrawal would leave contract below minimum balance')
 
     itxn
       .payment({
@@ -629,7 +588,7 @@ export class TipJar extends Contract {
    * @param diamond - Diamond threshold in microALGO
    */
   setBadgeThresholds(bronze: uint64, silver: uint64, gold: uint64, diamond: uint64): string {
-    this.assertAdmin()
+    assert(Txn.sender.bytes === this.adminAddress.value, 'Only admin can perform this action')
     assert(bronze < silver && silver < gold && gold < diamond, 'Thresholds must be ascending')
     this.bronzeThreshold.value = bronze
     this.silverThreshold.value = silver

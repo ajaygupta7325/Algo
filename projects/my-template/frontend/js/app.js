@@ -175,6 +175,9 @@ function navigateTo(page, param) {
     case 'widget-demo':
       renderWidgetDemo();
       break;
+    case 'terms':
+      // Static page, no dynamic rendering needed
+      break;
   }
 
   // Update URL hash

@@ -45,6 +45,7 @@ class TipJarContract {
     this._cache = new RequestCache(15_000); // 15s default TTL
     this._networkHealthy = true;
     this._lastHealthCheck = 0;
+    this._abiContract = null;
 
     // Initialize Algod client if algosdk is available
     if (typeof algosdk !== 'undefined' && CONFIG.ALGOD_SERVER) {
@@ -58,6 +59,131 @@ class TipJarContract {
         console.warn('Could not initialize Algod client:', e.message);
       }
     }
+
+    // Build ABI contract from method signatures
+    this._initABI();
+  }
+
+  /**
+   * Initialize ABI contract interface for typed method calls
+   */
+  _initABI() {
+    if (typeof algosdk === 'undefined') return;
+    try {
+      const methods = [
+        { name: 'createApplication', args: [], returns: { type: 'void' } },
+        { name: 'pauseContract', args: [], returns: { type: 'string' } },
+        { name: 'unpauseContract', args: [], returns: { type: 'string' } },
+        { name: 'transferAdmin', args: [{ type: 'address', name: 'newAdmin' }], returns: { type: 'string' } },
+        { name: 'acceptAdmin', args: [], returns: { type: 'string' } },
+        { name: 'registerCreator', args: [{ type: 'string', name: 'name' }, { type: 'string', name: 'bio' }, { type: 'string', name: 'category' }, { type: 'string', name: 'profileImage' }], returns: { type: 'string' } },
+        { name: 'updateProfile', args: [{ type: 'string', name: 'name' }, { type: 'string', name: 'bio' }, { type: 'string', name: 'category' }, { type: 'string', name: 'profileImage' }], returns: { type: 'string' } },
+        { name: 'setRevenueSplit', args: [{ type: 'string', name: 'collaboratorAddr' }, { type: 'string', name: 'collaboratorName' }, { type: 'uint64', name: 'splitPercent' }], returns: { type: 'string' } },
+        { name: 'removeRevenueSplit', args: [], returns: { type: 'string' } },
+        { name: 'getRevenueSplitPercent', args: [{ type: 'address', name: 'creator' }], returns: { type: 'uint64' } },
+        { name: 'sendTip', args: [{ type: 'address', name: 'creator' }, { type: 'string', name: 'message' }, { type: 'pay', name: 'tipPayment' }], returns: { type: 'string' } },
+        { name: 'mintBadge', args: [{ type: 'address', name: 'supporter' }, { type: 'uint64', name: 'badgeTier' }, { type: 'address', name: 'creatorAddr' }], returns: { type: 'string' } },
+        { name: 'verifyTipRecord', args: [{ type: 'address', name: 'creator' }], returns: { type: 'uint64' } },
+        { name: 'getBronzeThreshold', args: [], returns: { type: 'uint64' } },
+        { name: 'getTotalBadgesMinted', args: [], returns: { type: 'uint64' } },
+        { name: 'getCreatorName', args: [{ type: 'address', name: 'creator' }], returns: { type: 'string' } },
+        { name: 'getCreatorBio', args: [{ type: 'address', name: 'creator' }], returns: { type: 'string' } },
+        { name: 'getCreatorCategory', args: [{ type: 'address', name: 'creator' }], returns: { type: 'string' } },
+        { name: 'getTipsReceived', args: [{ type: 'address', name: 'creator' }], returns: { type: 'uint64' } },
+        { name: 'getTipCount', args: [{ type: 'address', name: 'creator' }], returns: { type: 'uint64' } },
+        { name: 'getPlatformStats', args: [], returns: { type: 'uint64' } },
+        { name: 'getTotalCreators', args: [], returns: { type: 'uint64' } },
+        { name: 'getTotalTipCount', args: [], returns: { type: 'uint64' } },
+        { name: 'setMinTipAmount', args: [{ type: 'uint64', name: 'newMin' }], returns: { type: 'string' } },
+        { name: 'setPlatformFee', args: [{ type: 'uint64', name: 'newFeeBps' }], returns: { type: 'string' } },
+        { name: 'withdrawPlatformFees', args: [{ type: 'uint64', name: 'amount' }], returns: { type: 'string' } },
+        { name: 'setBadgeThresholds', args: [{ type: 'uint64', name: 'bronze' }, { type: 'uint64', name: 'silver' }, { type: 'uint64', name: 'gold' }, { type: 'uint64', name: 'diamond' }], returns: { type: 'string' } },
+        { name: 'checkRegistration', args: [{ type: 'address', name: 'account' }], returns: { type: 'uint64' } },
+        { name: 'getMinTipAmount', args: [], returns: { type: 'uint64' } },
+        { name: 'getPlatformFee', args: [], returns: { type: 'uint64' } },
+        { name: 'getIsPaused', args: [], returns: { type: 'uint64' } },
+        { name: 'getTotalFeesAccumulated', args: [], returns: { type: 'uint64' } },
+        { name: 'getAdminAddress', args: [], returns: { type: 'byte[]' } },
+      ];
+      this._abiContract = new algosdk.ABIContract({ name: 'TipJar', methods });
+      console.log('[TipJar] ABI contract initialized with', methods.length, 'methods');
+    } catch (e) {
+      console.warn('[TipJar] Could not init ABI contract:', e.message);
+    }
+  }
+
+  /**
+   * Helper: call a read-only ABI method on the contract
+   */
+  async _readMethod(methodName, args = []) {
+    if (!this.algodClient || !this._abiContract || !this.appId) return null;
+    try {
+      const method = this._abiContract.getMethodByName(methodName);
+      const suggestedParams = await this.algodClient.getTransactionParams().do();
+
+      // Use a dummy sender for read-only calls (simulate)
+      const dummySender = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+      const atc = new algosdk.AtomicTransactionComposer();
+      atc.addMethodCall({
+        appID: this.appId,
+        method: method,
+        methodArgs: args,
+        sender: dummySender,
+        suggestedParams,
+        signer: algosdk.makeEmptyTransactionSigner(),
+      });
+
+      const result = await atc.simulate(this.algodClient);
+      if (result.methodResults && result.methodResults.length > 0) {
+        return result.methodResults[0].returnValue;
+      }
+      return null;
+    } catch (e) {
+      console.warn(`[TipJar] Read method ${methodName} failed:`, e.message);
+      return null;
+    }
+  }
+
+  /**
+   * Get on-chain platform stats (tries blockchain first, falls back to demo)
+   */
+  async getOnChainStats() {
+    const cacheKey = 'onChainStats';
+    const cached = this._cache.get(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const [totalTips, totalCreators, totalTipCount, minTip, feeBps, isPaused, totalBadges, totalFees] = await Promise.all([
+        this._readMethod('getPlatformStats'),
+        this._readMethod('getTotalCreators'),
+        this._readMethod('getTotalTipCount'),
+        this._readMethod('getMinTipAmount'),
+        this._readMethod('getPlatformFee'),
+        this._readMethod('getIsPaused'),
+        this._readMethod('getTotalBadgesMinted'),
+        this._readMethod('getTotalFeesAccumulated'),
+      ]);
+
+      if (totalTips !== null) {
+        const stats = {
+          onChain: true,
+          totalTipsProcessed: Number(totalTips),
+          totalCreators: Number(totalCreators),
+          totalTipCount: Number(totalTipCount),
+          minTipAmount: Number(minTip),
+          platformFeeBps: Number(feeBps),
+          isPaused: Number(isPaused) === 1,
+          totalBadgesMinted: Number(totalBadges),
+          totalFeesAccumulated: Number(totalFees),
+        };
+        this._cache.set(cacheKey, stats, 10_000);
+        console.log('[TipJar] On-chain stats:', stats);
+        return stats;
+      }
+    } catch (e) {
+      console.warn('[TipJar] Could not fetch on-chain stats:', e.message);
+    }
+    return null;
   }
 
   /**
@@ -103,6 +229,29 @@ class TipJarContract {
     const cached = this._cache.get(cacheKey);
     if (cached) return cached;
 
+    // Try on-chain stats first
+    const onChain = await this.getOnChainStats();
+    if (onChain) {
+      // Merge on-chain with demo data for display purposes
+      const creators = await this.getCreators();
+      const demoTotalTips = creators.reduce((sum, c) => sum + c.tipsReceived, 0);
+      const demoTotalCount = creators.reduce((sum, c) => sum + c.tipCount, 0);
+
+      const stats = {
+        totalCreators: onChain.totalCreators + creators.length,
+        totalTipsProcessed: onChain.totalTipsProcessed + demoTotalTips,
+        totalTipCount: onChain.totalTipCount + demoTotalCount,
+        minTipAmount: onChain.minTipAmount,
+        platformFeeBps: onChain.platformFeeBps,
+        isPaused: onChain.isPaused,
+        onChain: true,
+        contractStats: onChain,
+      };
+      this._cache.set(cacheKey, stats);
+      return stats;
+    }
+
+    // Fallback: demo-only stats
     const creators = await this.getCreators();
     const totalTips = creators.reduce((sum, c) => sum + c.tipsReceived, 0);
     const totalCount = creators.reduce((sum, c) => sum + c.tipCount, 0);
@@ -113,6 +262,7 @@ class TipJarContract {
       totalTipCount: totalCount,
       minTipAmount: algoToMicroAlgo(CONFIG.MIN_TIP_ALGO),
       platformFeeBps: CONFIG.PLATFORM_FEE_BPS,
+      onChain: false,
     };
 
     this._cache.set(cacheKey, stats);

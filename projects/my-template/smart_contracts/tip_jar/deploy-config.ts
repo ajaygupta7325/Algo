@@ -18,6 +18,10 @@ export async function deploy() {
   const { appClient, result } = await factory.deploy({
     onUpdate: 'append',
     onSchemaBreak: 'append',
+    createParams: {
+      method: 'createApplication',
+      args: [],
+    },
   })
 
   // If app was just created, fund the app account for inner transactions
