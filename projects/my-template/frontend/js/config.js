@@ -256,6 +256,75 @@ function generateAnalyticsData() {
 
 const DEMO_ANALYTICS = generateAnalyticsData();
 
+// ─── LocalStorage Persistence ────────────────────────────────
+const DEMO_STORAGE_KEY = 'tipjar_demo_data';
+
+/**
+ * Save all mutable demo data to localStorage
+ */
+function saveDemoData() {
+  try {
+    const snapshot = {
+      creators: DEMO_CREATORS,
+      tips: DEMO_TIPS,
+      supporters: DEMO_SUPPORTERS,
+      badges: DEMO_BADGES,
+      revenueSplits: DEMO_REVENUE_SPLITS,
+      savedAt: Date.now(),
+    };
+    localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(snapshot));
+  } catch (e) {
+    console.warn('[TipJar] Could not save demo data:', e.message);
+  }
+}
+
+/**
+ * Load saved demo data from localStorage (called once on startup)
+ */
+function loadDemoData() {
+  try {
+    const raw = localStorage.getItem(DEMO_STORAGE_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    if (!saved || !Array.isArray(saved.creators)) return;
+
+    // Hydrate DEMO_CREATORS
+    DEMO_CREATORS.length = 0;
+    saved.creators.forEach(c => DEMO_CREATORS.push(c));
+
+    // Hydrate DEMO_TIPS
+    if (Array.isArray(saved.tips)) {
+      DEMO_TIPS.length = 0;
+      saved.tips.forEach(t => DEMO_TIPS.push(t));
+    }
+
+    // Hydrate DEMO_SUPPORTERS
+    if (Array.isArray(saved.supporters)) {
+      DEMO_SUPPORTERS.length = 0;
+      saved.supporters.forEach(s => DEMO_SUPPORTERS.push(s));
+    }
+
+    // Hydrate DEMO_BADGES
+    if (Array.isArray(saved.badges)) {
+      DEMO_BADGES.length = 0;
+      saved.badges.forEach(b => DEMO_BADGES.push(b));
+    }
+
+    // Hydrate DEMO_REVENUE_SPLITS
+    if (Array.isArray(saved.revenueSplits)) {
+      DEMO_REVENUE_SPLITS.length = 0;
+      saved.revenueSplits.forEach(r => DEMO_REVENUE_SPLITS.push(r));
+    }
+
+    console.log('[TipJar] Loaded saved demo data ✅');
+  } catch (e) {
+    console.warn('[TipJar] Could not load saved demo data:', e.message);
+  }
+}
+
+// Load any persisted data on startup
+loadDemoData();
+
 // ─── Helper Functions ───────────────────────────────────────
 
 /**

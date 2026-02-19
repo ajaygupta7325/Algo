@@ -104,6 +104,98 @@ class WalletManager {
     // SDKs are loaded synchronously via script tags (self-contained bundles)
     this._sdksReady = this._initSDKs();
     this._initBalanceRefresh();
+
+    // Auto-reconnect saved session (demo mode or restore creator state)
+    this._restoreSession();
+  }
+
+  // ─── Session Persistence ────────────────────────────────────
+  static SESSION_KEY = 'tipjar_wallet_session';
+
+  /**
+   * Save wallet session to localStorage
+   */
+  _saveSession() {
+    try {
+      const session = {
+        mode: this.mode,
+        address: this.address,
+        balance: this.balance,
+        isRegistered: this.isRegistered,
+        creatorProfile: this.creatorProfile,
+        savedAt: Date.now(),
+      };
+      localStorage.setItem(WalletManager.SESSION_KEY, JSON.stringify(session));
+    } catch (e) {
+      console.warn('[TipJar] Could not save wallet session:', e.message);
+    }
+  }
+
+  /**
+   * Clear saved wallet session
+   */
+  _clearSession() {
+    try {
+      localStorage.removeItem(WalletManager.SESSION_KEY);
+    } catch (e) { /* ignore */ }
+  }
+
+  /**
+   * Restore wallet session on page load
+   */
+  _restoreSession() {
+    try {
+      const raw = localStorage.getItem(WalletManager.SESSION_KEY);
+      if (!raw) return;
+      const session = JSON.parse(raw);
+      if (!session || !session.mode || !session.address) return;
+
+      if (session.mode === 'demo') {
+        // Auto-reconnect demo mode
+        this.connected = true;
+        this.address = session.address;
+        this.balance = session.balance || this.demoBalance;
+        this.mode = 'demo';
+        this._restoreCreatorState(session);
+        console.log('[TipJar] Demo session restored ✅');
+        // Delay notify so DOM is ready
+        setTimeout(() => this._notify(), 0);
+      } else {
+        // For Pera/Defly, SDK reconnect handles connection.
+        // We just need to restore creator registration state after SDK reconnects.
+        this._pendingCreatorState = session;
+      }
+    } catch (e) {
+      console.warn('[TipJar] Could not restore wallet session:', e.message);
+    }
+  }
+
+  /**
+   * Restore creator registration state from a session or from DEMO_CREATORS
+   */
+  _restoreCreatorState(session) {
+    // First try session data
+    if (session && session.isRegistered && session.creatorProfile) {
+      this.isRegistered = true;
+      this.creatorProfile = session.creatorProfile;
+      return;
+    }
+    // Fallback: check if address exists in persisted DEMO_CREATORS
+    if (this.address) {
+      const existing = DEMO_CREATORS.find(c => c.address === this.address);
+      if (existing) {
+        this.isRegistered = true;
+        this.creatorProfile = {
+          name: existing.name,
+          bio: existing.bio,
+          category: existing.category,
+          profileImage: existing.profileImage || '',
+          tipsReceived: existing.tipsReceived,
+          tipCount: existing.tipCount,
+          address: existing.address,
+        };
+      }
+    }
   }
 
   /**
@@ -139,6 +231,8 @@ class WalletManager {
             this.address = accounts[0];
             this.connected = true;
             this.mode = 'pera';
+            this._restoreCreatorState(this._pendingCreatorState || null);
+            this._pendingCreatorState = null;
             this._fetchBalance().then(() => this._notify());
           }
         }).catch(() => { /* No previous session */ });
@@ -166,6 +260,8 @@ class WalletManager {
             this.address = accounts[0];
             this.connected = true;
             this.mode = 'defly';
+            this._restoreCreatorState(this._pendingCreatorState || null);
+            this._pendingCreatorState = null;
             this._fetchBalance().then(() => this._notify());
           }
         }).catch(() => { /* No previous session */ });
@@ -344,6 +440,10 @@ class WalletManager {
     this.isRegistered = false;
     this.creatorProfile = null;
 
+    // Restore creator state if previously registered with this address
+    this._restoreCreatorState(null);
+
+    this._saveSession();
     showToast('Connected in Demo Mode! 🎮 Balance: 100 ALGO', 'success');
     this._notify();
   }
@@ -369,9 +469,14 @@ class WalletManager {
         this.isRegistered = false;
         this.creatorProfile = null;
 
+        // Restore creator state if previously registered
+        this._restoreCreatorState(this._pendingCreatorState || null);
+        this._pendingCreatorState = null;
+
         // Fetch real balance from Algorand network
         await this._fetchBalance();
 
+        this._saveSession();
         showToast(`Pera Wallet connected! 📱 Address: ${truncateAddress(this.address)}`, 'success');
         this._notify();
 
@@ -413,8 +518,13 @@ class WalletManager {
         this.isRegistered = false;
         this.creatorProfile = null;
 
+        // Restore creator state if previously registered
+        this._restoreCreatorState(this._pendingCreatorState || null);
+        this._pendingCreatorState = null;
+
         await this._fetchBalance();
 
+        this._saveSession();
         showToast(`Defly Wallet connected! 🦅 Address: ${truncateAddress(this.address)}`, 'success');
         this._notify();
 
@@ -480,6 +590,7 @@ class WalletManager {
     this.isRegistered = false;
     this.creatorProfile = null;
 
+    this._clearSession();
     showToast('Wallet disconnected', 'info');
     this._notify();
   }
@@ -553,6 +664,10 @@ class WalletManager {
       avatar: getCategoryIcon(category),
     });
 
+    // Persist changes
+    saveDemoData();
+    this._saveSession();
+
     this._setLoading(false);
     showToast(`Registered as creator: ${name.trim()} ✨`, 'success');
     this._notify();
@@ -592,6 +707,10 @@ class WalletManager {
     if (idx >= 0) {
       DEMO_CREATORS[idx] = { ...DEMO_CREATORS[idx], name, bio, category, profileImage };
     }
+
+    // Persist changes
+    saveDemoData();
+    this._saveSession();
 
     this._setLoading(false);
     showToast('Profile updated successfully! ✅', 'success');
@@ -719,9 +838,25 @@ class WalletManager {
       creator.tipCount += 1;
     }
 
+    // Update supporter stats
+    const senderName = this.creatorProfile?.name || truncateAddress(this.address);
+    const existingSupporter = DEMO_SUPPORTERS.find(s => s.address === truncateAddress(this.address) || s.name === senderName);
+    if (existingSupporter) {
+      existingSupporter.totalTipped += amountMicro;
+      existingSupporter.tipCount += 1;
+    } else {
+      DEMO_SUPPORTERS.push({
+        name: senderName,
+        address: truncateAddress(this.address),
+        totalTipped: amountMicro,
+        tipCount: 1,
+        avatar: '⭐',
+      });
+    }
+
     // Add to tip history
     const tipRecord = {
-      from: this.creatorProfile?.name || truncateAddress(this.address),
+      from: senderName,
       fromAddr: this.address,
       to: creator?.name || truncateAddress(creatorAddress),
       toAddr: creatorAddress,
@@ -730,6 +865,10 @@ class WalletManager {
       time: Date.now(),
     };
     DEMO_TIPS.unshift(tipRecord);
+
+    // Persist changes
+    saveDemoData();
+    this._saveSession();
 
     this._setLoading(false);
     this._notify();
@@ -781,6 +920,7 @@ class WalletManager {
     };
 
     DEMO_BADGES.push(badge);
+    saveDemoData();
     showToast(`${tierInfo.icon} ${tierInfo.name} Badge minted as NFT!`, 'success');
     return badge;
   }
@@ -833,6 +973,7 @@ class WalletManager {
       DEMO_REVENUE_SPLITS.push(splitData);
     }
 
+    saveDemoData();
     showToast(`Revenue split set: ${splitPercent}% to ${collaboratorName} ✅`, 'success');
     this._notify();
     return true;
@@ -854,6 +995,7 @@ class WalletManager {
       DEMO_REVENUE_SPLITS.splice(idx, 1);
     }
 
+    saveDemoData();
     showToast('Revenue split removed', 'success');
     this._notify();
     return true;

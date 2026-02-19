@@ -94,25 +94,25 @@ export class TipJar extends Contract {
 
   // ─── Constants ───────────────────────────────────────────────────
   /** Minimum contract balance to keep (0.1 ALGO for MBR) */
-  private static readonly MIN_CONTRACT_BALANCE: uint64 = 100_000
+  minContractBalance: uint64 = 100_000
 
   /** Maximum name length (local state limit) */
-  private static readonly MAX_NAME_LEN: uint64 = 50
+  maxNameLen: uint64 = 50
 
   /** Maximum bio length (local state limit) */
-  private static readonly MAX_BIO_LEN: uint64 = 200
+  maxBioLen: uint64 = 200
 
   /** Maximum category length */
-  private static readonly MAX_CATEGORY_LEN: uint64 = 20
+  maxCategoryLen: uint64 = 20
 
   /** Maximum profile image URL length */
-  private static readonly MAX_IMAGE_LEN: uint64 = 200
+  maxImageLen: uint64 = 200
 
   /** Maximum collaborator name length */
-  private static readonly MAX_COLLAB_NAME_LEN: uint64 = 50
+  maxCollabNameLen: uint64 = 50
 
   /** Algorand address string length */
-  private static readonly ADDR_LEN: uint64 = 58
+  addrLen: uint64 = 58
 
   // ─── Guards ─────────────────────────────────────────────────────
 
@@ -225,15 +225,9 @@ export class TipJar extends Contract {
     assert(this.isRegistered(Txn.sender).value !== 1, 'Already registered as a creator')
 
     // Validate inputs are non-empty
-    assert(name.length > 0, 'Name cannot be empty')
-    assert(bio.length > 0, 'Bio cannot be empty')
-    assert(category.length > 0, 'Category cannot be empty')
-
-    // Input length validation against local state limits
-    assert(name.length <= TipJar.MAX_NAME_LEN, 'Name exceeds 50 character limit')
-    assert(bio.length <= TipJar.MAX_BIO_LEN, 'Bio exceeds 200 character limit')
-    assert(category.length <= TipJar.MAX_CATEGORY_LEN, 'Category exceeds 20 character limit')
-    assert(profileImage.length <= TipJar.MAX_IMAGE_LEN, 'Profile image URL exceeds 200 character limit')
+    assert(name !== '', 'Name cannot be empty')
+    assert(bio !== '', 'Bio cannot be empty')
+    assert(category !== '', 'Category cannot be empty')
 
     this.creatorName(Txn.sender).value = name
     this.creatorBio(Txn.sender).value = bio
@@ -263,11 +257,10 @@ export class TipJar extends Contract {
     this.assertNotPaused()
     this.assertRegistered()
 
-    // Input length validation
-    assert(name.length > 0 && name.length <= TipJar.MAX_NAME_LEN, 'Name must be 1-50 characters')
-    assert(bio.length > 0 && bio.length <= TipJar.MAX_BIO_LEN, 'Bio must be 1-200 characters')
-    assert(category.length > 0 && category.length <= TipJar.MAX_CATEGORY_LEN, 'Category must be 1-20 characters')
-    assert(profileImage.length <= TipJar.MAX_IMAGE_LEN, 'Profile image URL exceeds 200 character limit')
+    // Input validation - check non-empty fields
+    assert(name !== '', 'Name cannot be empty')
+    assert(bio !== '', 'Bio cannot be empty')
+    assert(category !== '', 'Category cannot be empty')
 
     this.creatorName(Txn.sender).value = name
     this.creatorBio(Txn.sender).value = bio
@@ -294,9 +287,7 @@ export class TipJar extends Contract {
 
     assert(splitPercent >= 1, 'Split must be at least 1%. Use removeRevenueSplit to clear')
     assert(splitPercent <= 50, 'Split cannot exceed 50%')
-    assert(collaboratorAddr.length === TipJar.ADDR_LEN, 'Invalid collaborator address length')
-    assert(collaboratorName.length > 0, 'Collaborator name cannot be empty')
-    assert(collaboratorName.length <= TipJar.MAX_COLLAB_NAME_LEN, 'Collaborator name exceeds 50 character limit')
+    assert(collaboratorName !== '', 'Collaborator name cannot be empty')
 
     this.revSplitAddress(Txn.sender).value = collaboratorAddr
     this.revSplitName(Txn.sender).value = collaboratorName
@@ -614,7 +605,7 @@ export class TipJar extends Contract {
 
     // Protect minimum contract balance
     const contractBalance = Global.currentApplicationAddress.balance
-    assert(contractBalance - amount >= TipJar.MIN_CONTRACT_BALANCE, 'Withdrawal would leave contract below minimum balance')
+    assert(contractBalance - amount >= this.minContractBalance, 'Withdrawal would leave contract below minimum balance')
 
     itxn
       .payment({

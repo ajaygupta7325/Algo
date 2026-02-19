@@ -128,6 +128,12 @@ function initNavigation() {
 }
 
 function navigateTo(page, param) {
+  // Pause video when navigating away from pages
+  const introVideo = document.getElementById('introVideo');
+  if (introVideo && page !== 'home') {
+    introVideo.pause();
+  }
+
   // Hide all pages
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
 
