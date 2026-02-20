@@ -807,8 +807,8 @@ class WalletManager {
           );
 
           const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-            from: this.address,
-            to: creatorAddress,
+            sender: this.address,
+            receiver: creatorAddress,
             amount: creatorReceives,
             note: note,
             suggestedParams,
@@ -829,7 +829,7 @@ class WalletManager {
           }
 
           // Submit transaction
-          const { txId: submittedTxId } = await this.algodClient.sendRawTransaction(signedTxns).do();
+          const { txid: submittedTxId } = await this.algodClient.sendRawTransaction(signedTxns).do();
 
           // Wait for confirmation (4 rounds)
           await algosdk.waitForConfirmation(this.algodClient, submittedTxId, 4);
