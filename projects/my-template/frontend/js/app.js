@@ -709,6 +709,7 @@ async function renderDashboard() {
   document.getElementById('editBio').value = profile?.bio || '';
   document.getElementById('editCategory').value = profile?.category || 'blogger';
   document.getElementById('editImage').value = profile?.profileImage || '';
+  document.getElementById('editReceiverAddress').value = profile?.address || wallet.address || '';
 
   // Share link
   const shareLink = `${CONFIG.BASE_URL}#profile/${wallet.address}`;
@@ -752,9 +753,17 @@ function initForms() {
     const bio = document.getElementById('regBio').value.trim();
     const category = document.getElementById('regCategory').value;
     const image = document.getElementById('regImage').value.trim();
+    const receiverAddress = document.getElementById('regReceiverAddress').value.trim();
 
-    if (!name || !bio || !category) {
+    if (!name || !bio || !category || !receiverAddress) {
       showToast('Please fill in all required fields', 'error');
+      unlockForm('register');
+      return;
+    }
+
+    // Validate Algorand address format (58 chars, base32)
+    if (receiverAddress.length !== 58) {
+      showToast('Receiver address must be exactly 58 characters', 'error');
       unlockForm('register');
       return;
     }
@@ -764,7 +773,7 @@ function initForms() {
     btn.innerHTML = '<span class="spinner"></span> Registering...';
 
     try {
-      const success = await contract.registerCreator(name, bio, category, image);
+      const success = await contract.registerCreator(name, bio, category, image, receiverAddress);
       if (success) {
         renderDashboard();
         renderExplorePage();
@@ -787,9 +796,16 @@ function initForms() {
     const bio = document.getElementById('editBio').value.trim();
     const category = document.getElementById('editCategory').value;
     const image = document.getElementById('editImage').value.trim();
+    const receiverAddress = document.getElementById('editReceiverAddress').value.trim();
 
-    if (!name || !bio) {
-      showToast('Name and bio are required', 'error');
+    if (!name || !bio || !receiverAddress) {
+      showToast('Name, bio, and receiver address are required', 'error');
+      unlockForm('updateProfile');
+      return;
+    }
+
+    if (receiverAddress.length !== 58) {
+      showToast('Receiver address must be exactly 58 characters', 'error');
       unlockForm('updateProfile');
       return;
     }
@@ -799,7 +815,7 @@ function initForms() {
     btn.innerHTML = '<span class="spinner"></span> Updating...';
 
     try {
-      await contract.updateProfile(name, bio, category, image);
+      await contract.updateProfile(name, bio, category, image, receiverAddress);
       renderDashboard();
     } catch (error) {
       showToast('Update failed: ' + error.message, 'error');

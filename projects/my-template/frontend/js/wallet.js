@@ -598,9 +598,15 @@ class WalletManager {
   /**
    * Register as a creator (demo mode)
    */
-  async registerCreator(name, bio, category, profileImage) {
+  async registerCreator(name, bio, category, profileImage, receiverAddress) {
     if (!this.connected) {
       showToast('Please connect your wallet first', 'error');
+      return false;
+    }
+
+    // Validate receiver address
+    if (!receiverAddress || receiverAddress.trim().length !== 58) {
+      showToast('A valid 58-character Algorand receiver address is required', 'error');
       return false;
     }
 
@@ -649,12 +655,12 @@ class WalletManager {
       profileImage: profileImage || '',
       tipsReceived: 0,
       tipCount: 0,
-      address: this.address,
+      address: receiverAddress.trim(),
     };
 
     // Add to demo creators list
     DEMO_CREATORS.push({
-      address: this.address,
+      address: receiverAddress.trim(),
       name: name.trim(),
       bio: bio.trim(),
       category,
@@ -677,7 +683,7 @@ class WalletManager {
   /**
    * Update creator profile (demo mode)
    */
-  async updateProfile(name, bio, category, profileImage) {
+  async updateProfile(name, bio, category, profileImage, receiverAddress) {
     if (!this.isRegistered) {
       showToast('You are not registered as a creator', 'error');
       return false;
@@ -696,16 +702,21 @@ class WalletManager {
       showToast('Profile image URL must be 200 characters or less', 'error');
       return false;
     }
+    if (!receiverAddress || receiverAddress.trim().length !== 58) {
+      showToast('A valid 58-character Algorand receiver address is required', 'error');
+      return false;
+    }
 
     this._setLoading(true);
     await this._simulateDelay(1000);
 
-    this.creatorProfile = { ...this.creatorProfile, name, bio, category, profileImage };
+    const oldAddress = this.creatorProfile?.address;
+    this.creatorProfile = { ...this.creatorProfile, name, bio, category, profileImage, address: receiverAddress.trim() };
 
     // Update in demo creators list
-    const idx = DEMO_CREATORS.findIndex(c => c.address === this.address);
+    const idx = DEMO_CREATORS.findIndex(c => c.address === oldAddress || c.address === this.address);
     if (idx >= 0) {
-      DEMO_CREATORS[idx] = { ...DEMO_CREATORS[idx], name, bio, category, profileImage };
+      DEMO_CREATORS[idx] = { ...DEMO_CREATORS[idx], name, bio, category, profileImage, address: receiverAddress.trim() };
     }
 
     // Persist changes
@@ -759,13 +770,10 @@ class WalletManager {
     let txId = null;
     this._setLoading(true);
 
-    // Detect demo creator addresses (not valid on-chain)
-    const isDemoCreator = creatorAddress.startsWith('DEMO');
-
     // ── Real Transaction (Pera / Defly) ──
     // Sends payment directly to creator with structured note.
     // Production upgrade: create atomic group (payment + app call to sendTip ABI method)
-    if (this.mode !== 'demo' && this.algodClient && !isDemoCreator) {
+    if (this.mode !== 'demo' && this.algodClient) {
       try {
         // Validate network before transacting
         const networkCheck = await this.validateNetwork();
