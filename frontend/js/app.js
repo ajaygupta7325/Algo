@@ -709,7 +709,7 @@ async function renderDashboard() {
   document.getElementById('editBio').value = profile?.bio || '';
   document.getElementById('editCategory').value = profile?.category || 'blogger';
   document.getElementById('editImage').value = profile?.profileImage || '';
-  document.getElementById('editReceiverAddress').value = profile?.address || wallet.address || '';
+  document.getElementById('editReceiverAddress').value = '';
 
   // Share link
   const shareLink = `${CONFIG.BASE_URL}#profile/${wallet.address}`;

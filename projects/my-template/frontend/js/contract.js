@@ -122,7 +122,7 @@ class TipJarContract {
       const suggestedParams = await this.algodClient.getTransactionParams().do();
 
       // Use a dummy sender for read-only calls (simulate)
-      const dummySender = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+      const dummySender = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ';
       const atc = new algosdk.AtomicTransactionComposer();
       atc.addMethodCall({
         appID: this.appId,
@@ -353,8 +353,8 @@ class TipJarContract {
    * Register as a creator
    * Invalidates caches after successful registration
    */
-  async registerCreator(name, bio, category, profileImage) {
-    const result = await wallet.registerCreator(name, bio, category, profileImage);
+  async registerCreator(name, bio, category, profileImage, receiverAddress) {
+    const result = await wallet.registerCreator(name, bio, category, profileImage, receiverAddress);
     if (result) this._cache.invalidate();
     return result;
   }
@@ -362,8 +362,8 @@ class TipJarContract {
   /**
    * Update creator profile
    */
-  async updateProfile(name, bio, category, profileImage) {
-    return wallet.updateProfile(name, bio, category, profileImage);
+  async updateProfile(name, bio, category, profileImage, receiverAddress) {
+    return wallet.updateProfile(name, bio, category, profileImage, receiverAddress);
   }
 
   /**

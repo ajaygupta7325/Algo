@@ -49,6 +49,20 @@ function classifyError(error) {
   return new TipJarError(error.message || 'An unexpected error occurred', 'UNKNOWN', error);
 }
 
+/**
+ * Check if a string is a valid Algorand address (58-char base32 with valid checksum)
+ */
+function isValidAlgorandAddress(addr) {
+  if (!addr || typeof addr !== 'string' || addr.length !== 58) return false;
+  try {
+    // algosdk.decodeAddress throws if address is invalid
+    algosdk.decodeAddress(addr);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // ─── Retry Helper ───────────────────────────────────────────
 /**
  * Retry an async function with exponential backoff
@@ -767,13 +781,16 @@ class WalletManager {
     const platformFee = Math.floor(amountMicro * CONFIG.PLATFORM_FEE_BPS / 10000);
     const creatorReceives = amountMicro - platformFee;
 
+    // Detect demo/fake addresses — must be a real valid Algorand address for on-chain tx
+    const isValidTo = isValidAlgorandAddress(creatorAddress);
+    const isValidFrom = isValidAlgorandAddress(this.address);
+
     let txId = null;
     this._setLoading(true);
 
     // ── Real Transaction (Pera / Defly) ──
-    // Sends payment directly to creator with structured note.
-    // Production upgrade: create atomic group (payment + app call to sendTip ABI method)
-    if (this.mode !== 'demo' && this.algodClient) {
+    // Only use real transactions when BOTH addresses are valid Algorand addresses
+    if (this.mode !== 'demo' && this.algodClient && isValidTo && isValidFrom) {
       try {
         // Validate network before transacting
         const networkCheck = await this.validateNetwork();
